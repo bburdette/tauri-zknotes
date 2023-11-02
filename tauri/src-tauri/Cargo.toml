@@ -26,7 +26,7 @@ serde = { version = "1.0", features = ["derive"] }
 tauri = { git = "https://github.com/tauri-apps/tauri", rev = "tauri-v2.0.0-alpha.10", features = [] }
 
 # zknotes deps
-zknotes-server-lib = { path = "../../server-lib" }
+zknotes-server-lib = { path = "../../zknotes/server-lib" }
 log = "0.4.0"
 
 [features]

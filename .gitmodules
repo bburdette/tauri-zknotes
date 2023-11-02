@@ -1,0 +1,3 @@
+[submodule "zknotes"]
+	path = zknotes
+	url = git@github.com:bburdette/zknotes.git
