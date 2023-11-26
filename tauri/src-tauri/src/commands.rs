@@ -33,7 +33,11 @@ pub fn zimsg(state: State<ZkState>, msg: UserMessage) -> TimedData {
   println!("zimsg");
 
   match (
-    zknotes_server_lib::interfaces::zk_interface_loggedin(&&state.config.lock().unwrap(), 2, &msg),
+    tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
+      &&state.config.lock().unwrap(),
+      2,
+      &msg,
+    )),
     SystemTime::now()
       .duration_since(SystemTime::UNIX_EPOCH)
       .map(|n| n.as_millis()),
@@ -110,11 +114,11 @@ pub fn uimsg(state: State<ZkState>, msg: WhatMessage) -> WhatMessage {
 
   let mut ut = UuidTokener { uuid: None };
 
-  let sr = match zknotes_server_lib::interfaces::user_interface(
+  let sr = match tauri::async_runtime::block_on(zknotes_server_lib::interfaces::user_interface(
     &mut ut,
     &state.config.lock().unwrap(),
     msg,
-  ) {
+  )) {
     Ok(sr) => {
       println!("sr: {}", sr.what);
       // serde_json::to_value(&sr).unwrap());
