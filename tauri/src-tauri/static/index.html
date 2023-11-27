@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width">
     <style>html,head,body { padding:0; margin:0; }
       body { font-family: mono, calibri, helvetica, arial, sans-serif; background-color:#EEEEEC; }</style>
-    <script type="text/javascript" src="main.js"></script>
-    <script type="text/javascript" src="localvals.js"></script>
-    <script type="text/javascript" src="windowkey.js"></script>
-    <script type="text/javascript" src="taselection.js"></script>
+    <script src="main.js"></script>
+    <script src="localvals.js"></script>
+    <script src="windowkey.js"></script>
+    <script src="taselection.js"></script>
   </head>
   <body>
     <div id="elm"></div>
@@ -21,7 +21,7 @@
       login = null;
       sysids = {"commentid":6,"publicid":1,"searchid":3,"shareid":2};
       errorid = null;
-      adminsettings = {"non_admin_invite":true,"open_registration":true};
+      adminsettings = {"non_admin_invite":true,"open_registration":true, "send_emails":false, "remote_registration":true};
       
       const { invoke } = window.__TAURI__.tauri
 
