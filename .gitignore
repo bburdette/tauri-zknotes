@@ -1,0 +1,5 @@
+key.properties
+tauri/src-tauri/static/main.js
+tauri/src-tauri/gen/
+zknotes.db
+target/
