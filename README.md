@@ -4,7 +4,26 @@ This is pre alpha and is only a development environment for now; the flake doesn
 
 Submodules employed liberally so `git submodule update --init --recursive` before trying to build.
 
+We're assuming you have the nix package manager installed.  If on nixos, you'll probably need nix-ld enabled.
+
+On the first build you'll need to init to make the tauri generated code.  Something like this:
+
 ```
+git submodule update --init --recursive
 cd tauri/src-tauri
+nix develop
+cargo tauri android init
 cargo tauri android build --apk -t armv7
 ```
+
+Then if you have adb set up on your system, and your phone plugged in, and usb debugging enabled on it, 
+
+you can do:
+
+```
+adb install /home/bburdette/code/tzkn-test/tauri/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+```
+
+Currently it does work sort of, but I have to restart it after starting it up the first time.  
+
+Its handy to build the tauri desktop app for debugging, as you can right click there and inspect to get the js debugger.  
