@@ -10,8 +10,11 @@ On the first build you'll need to init to make the tauri generated code.  Someth
 
 ```
 git submodule update --init --recursive
-cd tauri/src-tauri
+cd tauri
 nix develop
+cd zknotes/elm
+./buildprod.sh
+cd ../tauri/src-tauri
 cargo tauri android init
 cargo tauri android build --apk -t armv7
 ```
@@ -26,4 +29,8 @@ adb install /home/bburdette/code/tzkn-test/tauri/src-tauri/gen/android/app/build
 
 Currently it does work sort of, but I have to restart it after starting it up the first time.  
 
-Its handy to build the tauri desktop app for debugging, as you can right click there and inspect to get the js debugger.  
+### tauri desktop app:
+
+Its handy to build the tauri desktop app for debugging, as you can right click there and inspect to get the js debugger.  Build the elm first.
+
+You can build the tauri desktop app with regular `cargo build`, or go straight to running it with `cargo run`..
