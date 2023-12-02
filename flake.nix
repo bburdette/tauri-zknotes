@@ -12,8 +12,8 @@
 
   outputs = { self, nixpkgs, flake-utils, naersk, fenix }:
     let
-      mytauri = { pkgs }: pkgs.callPackage ./my-tauri.nix { };
-      mytaurimobile = { pkgs }: pkgs.callPackage ./my-tauri-mobile.nix { };
+      mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
+      mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
     in
     flake-utils.lib.eachDefaultSystem (
       system:
