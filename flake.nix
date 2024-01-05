@@ -2,6 +2,7 @@
   description = "zknotes, a web based zettelkasten";
 
   inputs = {
+    nixpkgs.url = "path:/home/bburdette/code/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
     naersk.url = "github:nmattia/naersk";
     fenix = {
@@ -126,7 +127,7 @@
             openssl.dev
             # aarch64-linux-android-pkgs.sqlite
             # aarch64-linux-android-pkgs.openssl.dev
-            pkgconfig
+            pkg-config
             elm2nix
             elmPackages.elm
             elmPackages.elm-analyse
