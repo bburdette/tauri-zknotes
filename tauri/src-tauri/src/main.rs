@@ -1,16 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use log::{error, info};
-use serde;
-use serde_json;
-use serde_json::Value;
+// use log::{error, info};
+// use serde;
+// use serde_json;
+// use serde_json::Value;
 use std::sync::Mutex;
-use std::thread;
-use tauri::State;
-use zknotes_server_lib::err_main;
-use zknotes_server_lib::orgauth::data::WhatMessage;
-use zknotes_server_lib::orgauth::endpoints::{Callbacks, Tokener, UuidTokener};
-use zknotes_server_lib::zkprotocol::messages::{PublicMessage, ServerResponse, UserMessage};
+// use std::thread;
+// use tauri::State;
+// use zknotes_server_lib::err_main;
+// use zknotes_server_lib::orgauth::data::WhatMessage;
+// use zknotes_server_lib::orgauth::endpoints::{Callbacks, Tokener, UuidTokener};
+// use zknotes_server_lib::zkprotocol::messages::{PublicMessage, ServerResponse, UserMessage};
 mod commands;
 use commands::{greet, pimsg, uimsg, zimsg, ZkState};
 

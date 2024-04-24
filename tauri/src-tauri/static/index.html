@@ -23,7 +23,8 @@
       errorid = null;
       adminsettings = {"non_admin_invite":true,"open_registration":true, "send_emails":false, "remote_registration":true};
       
-      const { invoke } = window.__TAURI__.tauri
+      // const { invoke } = window.__TAURI__.tauri;
+      const invoke = window.__TAURI_INTERNALS__.invoke;
 
       function sendZIValueTauri(request) {
         console.log("sendZIValueTauri", request);

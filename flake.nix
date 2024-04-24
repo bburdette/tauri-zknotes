@@ -2,7 +2,9 @@
   description = "zknotes, a web based zettelkasten";
 
   inputs = {
-    nixpkgs.url = "path:/home/bburdette/code/nixpkgs";
+    # nixpkgs.url = "path:/home/bburdette/code/nixpkgs";
+    nixpkgs = { url = "github:nixos/nixpkgs/nixos-unstable"; };
+    # nixpkgs = { url = "github:nixos/nixpkgs/nixos-23.11"; };
     flake-utils.url = "github:numtide/flake-utils";
     naersk.url = "github:nmattia/naersk";
     fenix = {
@@ -14,7 +16,7 @@
   outputs = { self, nixpkgs, flake-utils, naersk, fenix }:
     let
       mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
-      mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
+      # mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
     in
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -40,9 +42,6 @@
         #       ];
         #   };
 
-        my-tauri = mytauri { inherit pkgs; };
-        my-tauri-mobile = mytaurimobile { inherit pkgs; };
-
         # fenix stuff for adding other compile targets
         mkToolchain = fenix.packages.${system}.combine;
         toolchain = fenix.packages.${system}.stable;
@@ -60,6 +59,20 @@
           target4.rust-std
         ]);
 
+        my-tauri = mytauri { inherit pkgs; };
+        # my-tauri-mobile = mytaurimobile { inherit pkgs; };
+
+        libraries = with pkgs;[
+          gcc13
+          webkitgtk
+          gtk3
+          cairo
+          gdk-pixbuf
+          glib
+          # dbus
+          openssl_3
+          librsvg
+        ];
 
       in
       rec {
@@ -114,6 +127,11 @@
           NIX_LD = "${pkgs.stdenv.cc.libc}/lib/ld-linux-x86-64.so.2";
           ANDROID_HOME = "${androidComposition.androidsdk}/libexec/android-sdk";
           NDK_HOME = "${androidComposition.androidsdk}/libexec/android-sdk/ndk/${builtins.head (pkgs.lib.lists.reverseList (builtins.split "-" "${androidComposition.ndk-bundle}"))}";
+          shellHook =
+            ''
+              # export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
+              export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
+            '';
 
           nativeBuildInputs = with pkgs; [
             androidComposition.androidsdk
@@ -143,20 +161,34 @@
             elmPackages.elm-optimize-level-2
             # extra stuff for tauri
             my-tauri
-            # cargo-tauri
+            curl
+            wget
+            # dbus
+            # openssl_3
+            # gcc13
+            glib
+            gtk3
             libsoup
-            cairo
-            atk
-            webkitgtk
-            gst_all_1.gstreamer
-            gst_all_1.gst-plugins-base
-            gst_all_1.gst-plugins-good
-            gst_all_1.gst-plugins-bad
-            # for tauti-mobile
+            # webkitgtk
             librsvg
+            #  wut
+            cairo
+            # cargo-tauri
+            atk
+            # glib
+            # dbus
+            # webkitgtk
+            # librsvg
+            # gst_all_1.gstreamer
+            # gst_all_1.gst-plugins-base
+            # gst_all_1.gst-plugins-good
+            # gst_all_1.gst-plugins-bad
+            # for tauti-mobile
+            # librsvg
             webkitgtk_4_1
             # tauri-mobile
-            my-tauri-mobile
+            # my-tauri-mobile
+            # libxml2
             lldb
             nodejs
             # rustup # `cargo tauri android init` wants this, even though targets already installed.
