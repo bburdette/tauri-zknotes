@@ -3,31 +3,30 @@
 
   inputs = {
     # nixpkgs.url = "path:/home/bburdette/code/nixpkgs";
-    nixpkgs = { url = "github:nixos/nixpkgs/nixos-unstable"; };
-    # nixpkgs = { url = "github:nixos/nixpkgs/nixos-23.11"; };
+    # nixpkgs = { url = "github:nixos/nixpkgs/nixos-unstable"; };
+    nixpkgs = { url = "github:nixos/nixpkgs/nixos-23.11"; };
     flake-utils.url = "github:numtide/flake-utils";
     naersk.url = "github:nmattia/naersk";
     fenix = {
       url = "github:nix-community/fenix";
+      # url = "github:nix-community/fenix/monthly";
+      # url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # rust-overlay.url = "github:oxalica/rust-overlay";
+
   };
 
-  outputs = { self, nixpkgs, flake-utils, naersk, fenix }:
+  outputs = { self, nixpkgs, flake-utils, naersk, fenix  }:
     let
-      mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
+      # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
       # mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
+      # mtpkgs =  nixpkgs // { rust = nixpkgs.rust_1_76; rustPackages = nixpkgs.rustPackages_1_76; } ;
     in
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         pname = "zknotes";
-        # pkgs = nixpkgs.legacyPackages."${system}"
-        pkgs = import nixpkgs {
-          config.android_sdk.accept_license = true;
-          config.allowUnfree = true;
-          system = "${system}";
-        };
         # naersk-lib = naersk.lib."${system}";
         # elm-stuff = makeElmPkg { inherit pkgs; };
         # rust-stuff = naersk-lib.buildPackage {
@@ -45,6 +44,7 @@
         # fenix stuff for adding other compile targets
         mkToolchain = fenix.packages.${system}.combine;
         toolchain = fenix.packages.${system}.stable;
+        # toolchain = fenix.packages.${system}.default;
         target1 = fenix.packages.${system}.targets."aarch64-linux-android".stable;
         target2 = fenix.packages.${system}.targets."armv7-linux-androideabi".stable;
         target3 = fenix.packages.${system}.targets."i686-linux-android".stable;
@@ -59,7 +59,30 @@
           target4.rust-std
         ]);
 
-        my-tauri = mytauri { inherit pkgs; };
+        # pkgs = nixpkgs.legacyPackages."${system}" {
+        pkgs = import nixpkgs {
+          config.android_sdk.accept_license = true;
+          config.allowUnfree = true;
+          system = "${system}";
+          # overlays = [ rust-overlay.overlays.default ];
+          # overlays = [ (self: super: super // { cargo = toolchain.cargo; rustc = toolchain.rustc; }) ];
+          # overlays = [ fenix.overlays.default ];
+          # rustPlatform = nixpkgs.makeRustPlatform { cargo = toolchain; rustc = toolchain; };
+        };
+
+          # inherit (rustPackages_1_76) rustPlatform;
+
+        mt = builtins.trace "blah" mobileTargets.rustc;
+
+        # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
+        # my-tauri = mytauri { inherit pkgs; };
+        # my-tauri = pkgs.callPackage ./tauri/my-tauri.nix {
+        #   rustPlatform = pkgs.makeRustPlatform { cargo = toolchain; rustc = toolchain; };
+        # };
+        my-tauri = pkgs.callPackage ./tauri/my-tauri.nix {
+          inherit (pkgs.rustPackages_1_76) rustPlatform;
+        };
+
         # my-tauri-mobile = mytaurimobile { inherit pkgs; };
 
         libraries = with pkgs;[
@@ -107,9 +130,9 @@
         androidEnv = pkgs.androidenv.override { licenseAccepted = true; };
         androidComposition = androidEnv.composeAndroidPackages {
           includeNDK = true;
-          platformToolsVersion = "33.0.3";
-          buildToolsVersions = [ "30.0.3" ];
-          platformVersions = [ "33" ];
+          # platformToolsVersion = "34.0.5";
+          # buildToolsVersions = [ "34.0.0" ];
+          # platformVersions = [ "33" ];
           extraLicenses = [
             "android-googletv-license"
             "android-sdk-arm-dbt-license"
@@ -188,7 +211,7 @@
             webkitgtk_4_1
             # tauri-mobile
             # my-tauri-mobile
-            # libxml2
+            libxml2
             lldb
             nodejs
             # rustup # `cargo tauri android init` wants this, even though targets already installed.

@@ -1,12 +1,10 @@
 {
   "productName": "zknotes",
   "version": "0.1.0",
-  "identifier": "com.zknotes.dev",
+  "identifier": "com.zknotes.wtf",
   "build": {
     "frontendDist": "static",
-    "devUrl": "http://192.168.88.252:8010",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "devUrl": "http://0.0.0.0:8080"
   },
   "app": {
     "windows": [
@@ -32,6 +30,5 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
-  },
-  "plugins": {}
+  }
 }
