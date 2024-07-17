@@ -4,7 +4,7 @@
   inputs = {
     # nixpkgs.url = "path:/home/bburdette/code/nixpkgs";
     # nixpkgs = { url = "github:nixos/nixpkgs/nixos-unstable"; };
-    nixpkgs = { url = "github:nixos/nixpkgs/nixos-23.11"; };
+    nixpkgs = { url = "github:nixos/nixpkgs/nixos-24.05"; };
     flake-utils.url = "github:numtide/flake-utils";
     naersk.url = "github:nmattia/naersk";
     fenix = {
@@ -79,9 +79,14 @@
         # my-tauri = pkgs.callPackage ./tauri/my-tauri.nix {
         #   rustPlatform = pkgs.makeRustPlatform { cargo = toolchain; rustc = toolchain; };
         # };
-        my-tauri = pkgs.callPackage ./tauri/my-tauri.nix {
-          inherit (pkgs.rustPackages_1_76) rustPlatform;
-        };
+
+        # my-tauri = pkgs.callPackage ./tauri/my-tauri.nix {
+        #   inherit (pkgs.rustPackages_1_76) rustPlatform;
+        # };
+
+        mtplatform = pkgs.makeRustPlatform { inherit (fenix.packages.${system}.stable) cargo rustc; };
+        mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { rustPlatform = mtplatform; };
+        my-tauri = mytauri { inherit pkgs; };
 
         # my-tauri-mobile = mytaurimobile { inherit pkgs; };
 

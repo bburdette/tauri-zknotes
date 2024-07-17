@@ -25,7 +25,7 @@ fn main() {
   //   }
   // });
 
-  let config = zknotes_server_lib::load_config("tauri-dev.toml");
+  let config = zknotes_server_lib::load_config("zknotes-tauri-dev.toml");
   match config {
     Ok(config) => {
       let ret = zknotes_server_lib::sqldata::dbinit(
