@@ -42,39 +42,80 @@ pub fn zimsg(state: State<ZkState>, msg: PrivateMessage) -> PrivateTimedData {
 
   println!("zimsg");
 
-  match (
-    tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
-      &&state.config.lock().unwrap(),
-      2,
-      &msg,
-    )),
-    SystemTime::now()
-      .duration_since(SystemTime::UNIX_EPOCH)
-      .map(|n| n.as_millis()),
-  ) {
-    (Ok(sr), Ok(t)) => {
-      println!("sr: {:?}", sr.what);
-      // serde_json::to_value(&sr).unwrap());
-      PrivateTimedData {
-        utcmillis: t,
-        data: sr,
+  let config_clone = state.config.lock().unwrap().clone();
+
+  // let res = tauri::async_runtime::block_on(async move {
+  let res = std::thread::spawn(move || {
+    let rt = actix_rt::System::new();
+    // let serv = atomic_server_lib::serve::serve(config_clone);
+    let zkres = zknotes_server_lib::interfaces::zk_interface_loggedin(&config_clone, 2, &msg);
+    match (
+      rt.block_on(zkres),
+      SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|n| n.as_millis()),
+    ) {
+      (Ok(sr), Ok(t)) => {
+        println!("sr: {:?}", sr.what);
+        // serde_json::to_value(&sr).unwrap());
+        PrivateTimedData {
+          utcmillis: t,
+          data: sr,
+        }
       }
+      (Err(e), _) => PrivateTimedData {
+        utcmillis: 0,
+        data: PrivateReplyMessage {
+          what: PrivateReplies::ServerError,
+          content: Value::String(e.to_string()),
+        },
+      },
+      (_, Err(e)) => PrivateTimedData {
+        utcmillis: 0,
+        data: PrivateReplyMessage {
+          what: PrivateReplies::ServerError,
+          content: Value::String(e.to_string()),
+        },
+      },
     }
-    (Err(e), _) => PrivateTimedData {
-      utcmillis: 0,
-      data: PrivateReplyMessage {
-        what: PrivateReplies::ServerError,
-        content: Value::String(e.to_string()),
-      },
-    },
-    (_, Err(e)) => PrivateTimedData {
-      utcmillis: 0,
-      data: PrivateReplyMessage {
-        what: PrivateReplies::ServerError,
-        content: Value::String(e.to_string()),
-      },
-    },
-  }
+  });
+
+  res.join().unwrap()
+
+  // match (
+  //   // tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
+  //   //   &&state.config.lock().unwrap(),
+  //   //   2,
+  //   //   &msg,
+  //   // )),
+  //   res,
+  //   SystemTime::now()
+  //     .duration_since(SystemTime::UNIX_EPOCH)
+  //     .map(|n| n.as_millis()),
+  // ) {
+  //   (Ok(sr), Ok(t)) => {
+  //     println!("sr: {:?}", sr.what);
+  //     // serde_json::to_value(&sr).unwrap());
+  //     PrivateTimedData {
+  //       utcmillis: t,
+  //       data: sr,
+  //     }
+  //   }
+  //   (Err(e), _) => PrivateTimedData {
+  //     utcmillis: 0,
+  //     data: PrivateReplyMessage {
+  //       what: PrivateReplies::ServerError,
+  //       content: Value::String(e.to_string()),
+  //     },
+  //   },
+  //   (_, Err(e)) => PrivateTimedData {
+  //     utcmillis: 0,
+  //     data: PrivateReplyMessage {
+  //       what: PrivateReplies::ServerError,
+  //       content: Value::String(e.to_string()),
+  //     },
+  //   },
+  // }
 }
 
 #[tauri::command]
