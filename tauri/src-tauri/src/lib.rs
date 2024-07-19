@@ -21,7 +21,6 @@ pub fn run() {
           filepath.push("files");
           let mut temppath = datapath.clone();
           temppath.push("temp");
-          let mut config = zknotes_server_lib::defcon();
 
           config.orgauth_config.db = dbpath;
           config.createdirs = true;
