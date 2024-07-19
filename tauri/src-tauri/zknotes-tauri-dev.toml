@@ -1,6 +1,6 @@
 ip = '127.0.0.1'
 port = 8000
-createdirs = false
+createdirs = true
 altmainsite = []
 file_tmp_path = './temp'
 file_path = './files'

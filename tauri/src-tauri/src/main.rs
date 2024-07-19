@@ -13,6 +13,7 @@ use std::sync::Mutex;
 // use zknotes_server_lib::zkprotocol::messages::{PublicMessage, ServerResponse, UserMessage};
 mod commands;
 use commands::{greet, pimsg, uimsg, zimsg, ZkState};
+use std::error::Error;
 
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 fn main() {
@@ -25,15 +26,28 @@ fn main() {
   //   }
   // });
 
-  let config = zknotes_server_lib::load_config("zknotes-tauri-dev.toml");
-  match config {
-    Ok(config) => {
-      let ret = zknotes_server_lib::sqldata::dbinit(
-        config.orgauth_config.db.as_path(),
-        config.orgauth_config.login_token_expiration_ms,
-      );
+  let res: Result<zknotes_server_lib::config::Config, Box<dyn Error>> = (|| {
+    let config = zknotes_server_lib::load_config("zknotes-tauri-dev.toml")?;
+    let ret = zknotes_server_lib::sqldata::dbinit(
+      config.orgauth_config.db.as_path(),
+      config.orgauth_config.login_token_expiration_ms,
+    );
+    println!("dbinit ret: {:?}", ret);
+    // verify/create file directories.
+    if config.createdirs {
+      if !std::path::Path::exists(&config.file_tmp_path) {
+        std::fs::create_dir_all(&config.file_tmp_path)?;
+      }
+      if !std::path::Path::exists(&config.file_path) {
+        std::fs::create_dir_all(&config.file_path)?;
+      }
+    }
 
-      println!("dbinit ret: {:?}", ret);
+    Ok(config)
+  })();
+
+  match res {
+    Ok(config) => {
       tauri::Builder::default()
         .manage(ZkState {
           config: Mutex::new(config),
