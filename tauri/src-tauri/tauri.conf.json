@@ -4,7 +4,7 @@
   "identifier": "com.zknotes.wtf",
   "build": {
     "frontendDist": "static",
-    "devUrl": "http://0.0.0.0:8010"
+    "devUrl": "http://0.0.0.0:8080"
   },
   "app": {
     "windows": [
@@ -17,9 +17,9 @@
       }
     ],
     "security": {
-      "csp": null
-    }
-  },
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost; media-src 'self' asset: https://asset.localhost; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+         }
+   },
   "bundle": {
     "active": true,
     "targets": "all",
