@@ -54,7 +54,6 @@ fn main() {
           config: Mutex::new(config),
           uid: None.into(),
         })
-        // .register_asynchronous_uri_scheme_protocol("zkfile", fileresp)
         .register_asynchronous_uri_scheme_protocol("zkfile", |app, request, responder| {
           println!("fileresp");
           fileresp(app.state(), request, responder);
