@@ -41,79 +41,41 @@ pub struct PublicTimedData {
   utcmillis: u128,
   data: PublicReplyMessage,
 }
-// pub fn fileresp(state: State<ZkState>, uid: i64, noteid: &str) -> http::Response {
-// pub fn fileresp(
-//   state: State<ZkState>,
-//   request: tauri::http::Request<Vec<u8>>,
-//   usr: UriSchemeResponder,
-// ) {
-//   match fileresp_helper(state, request, usr) {
-//     Ok(()) => (),
-//     Err(e) => {
-//       usr.respond(
-//         http::Response::builder()
-//           .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-//           .body(format!("{:?}", e).as_bytes().to_vec())
-//           .unwrap(),
-//       );
-//     }
-//   }
-// }
+
 pub fn fileresp(
   state: State<ZkState>,
   request: tauri::http::Request<Vec<u8>>,
   usr: UriSchemeResponder,
 ) {
-  println!("fr1");
-  // async fn file(session: Session, config: web::Data<Config>, req: HttpRequest) -> HttpResponse {
+  match fileresp_helper(state, request, usr) {
+    Ok(()) => (),
+    Err((usr, e)) => {
+      usr.respond(
+        http::Response::builder()
+          .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+          .body(format!("{:?}", e).as_bytes().to_vec())
+          .unwrap(),
+      );
+    }
+  }
+}
+
+pub fn fileresp_helper(
+  state: State<ZkState>,
+  request: tauri::http::Request<Vec<u8>>,
+  usr: UriSchemeResponder,
+) -> Result<(), (UriSchemeResponder, zkerr::Error)> {
   let conn =
     match sqldata::connection_open(state.config.lock().unwrap().orgauth_config.db.as_path()) {
       Ok(c) => c,
       Err(e) => {
-        usr.respond(
-          http::Response::builder()
-            .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-            .body(format!("{:?}", e).as_bytes().to_vec())
-            .unwrap(),
-        );
-        return;
+        return Err((usr, e));
       }
     };
-  println!("fr2");
-
-  // let errsponse = |e| {
-  //   usr.respond(
-  //     http::Response::builder()
-  //       .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-  //       .body(format!("{:?}", e).as_bytes().to_vec())
-  //       .unwrap(),
-  //   );
-  // };
-  // let suser = match session_user(&conn, session, &config)? {
-  //   Either::Left(user) => Some(user),
-  //   Either::Right(_sr) => None,
-  // };
-  // let uid = suser.map(|user| user.id);
 
   let config_clone = state.config.lock().unwrap().clone();
-  println!("fr3");
 
   let uid = Some(2);
-
-  // let v12 = "/d5d6bba3-cba5-4eb1-9caf-be693c2277b5".to_string();
-  // let v: Vec<&str> = v12.split("/").collect();
-  // println!("split: {:?} ", v);
-
-  // println!(
-  //   "pre noteid: {:?}  {:?}",
-  //   request.uri().path_and_query().map(|pnq| pnq.path()),
-  //   request
-  //     .uri()
-  //     .path_and_query()
-  //     .map(|pnq| pnq.path())
-  //     .map(|p| p.split("/"))
-  //     .map(|mut s| s.collect(s)) // .map(|mut s| (s.nth(0), s.nth(1), s.nth(2), s.nth(3)))
-  // );
 
   let noteid = match request
     .uri()
@@ -125,15 +87,13 @@ pub fn fileresp(
     None => {
       usr.respond(
         http::Response::builder()
-          .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+          .status(http::StatusCode::BAD_REQUEST)
           .body("file id required: /file/<id>".as_bytes().to_vec())
           .unwrap(),
       );
-      return;
+      return Ok(());
     }
   };
-
-  println!("noteid: {}", noteid);
 
   let uuid = match Uuid::parse_str(noteid) {
     Ok(id) => id,
@@ -148,102 +108,54 @@ pub fn fileresp(
           .body(format!("invalid note id {}: ", noteid).as_bytes().to_vec())
           .unwrap(),
       );
-      return;
-    } // HttpResponse::BadRequest().body(e.to_string())
+      return Ok(());
+    }
   };
+
   let nid = match sqldata::note_id_for_uuid(&conn, &uuid) {
     Ok(c) => c,
     Err(e) => {
-      return usr.respond(
-        http::Response::builder()
-          .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-          .body(format!("{:?}", e).as_bytes().to_vec())
-          .unwrap(),
-      )
+      return Err((usr, e));
     }
   };
+
   let hash = match sqldata::read_zknote_filehash(&conn, uid, nid) {
     Ok(Some(hash)) => hash,
     Ok(None) => {
       usr.respond(
         http::Response::builder()
-          .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+          .status(http::StatusCode::NOT_FOUND)
           .body((format!("file {} not found!", nid)).as_bytes().to_vec())
           .unwrap(),
       );
-      return;
+      return Ok(());
     }
     Err(e) => {
-      return usr.respond(
-        http::Response::builder()
-          .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-          .body(format!("{:?}", e).as_bytes().to_vec())
-          .unwrap(),
-      )
+      return Err((usr, e));
     }
   };
 
   let zkln = match sqldata::read_zklistnote(&conn, &config_clone.file_path, uid, nid) {
     Ok(x) => x,
     Err(e) => {
-      return usr.respond(
-        http::Response::builder()
-          .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-          .body(format!("{:?}", e).as_bytes().to_vec())
-          .unwrap(),
-      )
+      return Err((usr, e.into()));
     }
   };
 
   let stpath = config_clone.file_path.join(hash);
 
-  println!("reading path: {:?} ", stpath);
-
   match std::fs::read(stpath.as_path()) {
     Ok(v) => {
-      usr.respond(http::Response::builder().body(v).unwrap());
+      // TODO: filename as in actix NAMED FILE.
+      let r = match http::Response::builder().body(v) {
+        Ok(r) => r,
+        Err(e) => return Err((usr, zkerr::Error::String(format!("{}", e)))),
+      };
+      usr.respond(r);
+      Ok(())
     }
-    Err(e) => {
-      return usr.respond(
-        http::Response::builder()
-          .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-          .body(format!("{:?}", e).as_bytes().to_vec())
-          .unwrap(),
-      )
-    }
+    Err(e) => Err((usr, e.into())),
   }
-
-  // let mut f = match File::open(stpath) {
-  //   Ok(f) => f,
-  //   Err(e) => {
-  //     return usr.respond(
-  //       http::Response::builder()
-  //         .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-  //         .body(format!("{:?}", e).as_bytes().to_vec())
-  //         .unwrap(),
-  //     )
-  //   }
-  // };
-  // // .and_then(|f| NamedFile::from_file(f, Path::new(zkln.title.as_str())))?;
-  // let mut v = Vec::new();
-  // match f.read(&mut v) {
-  //   Ok(s) => {
-  //     println!("read size: {}", s);
-  //   }
-  //   Err(e) => {
-  //     return usr.respond(
-  //       http::Response::builder()
-  //         .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-  //         .body(format!("{:?}", e).as_bytes().to_vec())
-  //         .unwrap(),
-  //     )
-  //   }
-  // };
-
-  // println!("returning file");
-  // usr.respond(http::Response::builder().body(v).unwrap());
-  // Ok(())
-  // Err(e) => HttpResponse::NotFound().body(format!("{:?}", e)),
 }
 
 #[tauri::command]
@@ -292,41 +204,6 @@ pub fn zimsg(state: State<ZkState>, msg: PrivateMessage) -> PrivateTimedData {
   });
 
   res.join().unwrap()
-
-  // match (
-  //   // tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
-  //   //   &&state.config.lock().unwrap(),
-  //   //   2,
-  //   //   &msg,
-  //   // )),
-  //   res,
-  //   SystemTime::now()
-  //     .duration_since(SystemTime::UNIX_EPOCH)
-  //     .map(|n| n.as_millis()),
-  // ) {
-  //   (Ok(sr), Ok(t)) => {
-  //     println!("sr: {:?}", sr.what);
-  //     // serde_json::to_value(&sr).unwrap());
-  //     PrivateTimedData {
-  //       utcmillis: t,
-  //       data: sr,
-  //     }
-  //   }
-  //   (Err(e), _) => PrivateTimedData {
-  //     utcmillis: 0,
-  //     data: PrivateReplyMessage {
-  //       what: PrivateReplies::ServerError,
-  //       content: Value::String(e.to_string()),
-  //     },
-  //   },
-  //   (_, Err(e)) => PrivateTimedData {
-  //     utcmillis: 0,
-  //     data: PrivateReplyMessage {
-  //       what: PrivateReplies::ServerError,
-  //       content: Value::String(e.to_string()),
-  //     },
-  //   },
-  // }
 }
 
 #[tauri::command]
