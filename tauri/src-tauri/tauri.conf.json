@@ -17,14 +17,7 @@
       }
     ],
     "security": {
-      "csp": {
-          "default-src": "'self'",
-          "connect-src": "'self'",
-          "font-src": ["'self'"],
-          "img-src": "'self'",
-          "media-src": "'self'",
-          "style-src": "'self'"
-        }
+      "csp": null
     }
    },
   "bundle": {
