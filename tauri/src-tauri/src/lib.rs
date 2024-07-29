@@ -1,10 +1,13 @@
 mod commands;
 use commands::{greet, pimsg, uimsg, zimsg, ZkState};
 use std::sync::Mutex;
+use std::thread;
 use tauri::Manager;
+use zknotes_server_lib::err_main;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  // spawn the web server in a separate thread.
   tauri::Builder::default()
     .manage(ZkState {
       config: Mutex::new(zknotes_server_lib::defcon()),
@@ -42,6 +45,16 @@ pub fn run() {
               std::fs::create_dir_all(&config.file_path)?
             }
           }
+
+          let cc = config.clone();
+
+          let _handler = thread::spawn(|| {
+            println!("meh here");
+            match err_main(Some(cc)) {
+              Err(e) => println!("error: {:?}", e),
+              Ok(_) => (),
+            }
+          });
         }
         Err(_) => (),
       }
