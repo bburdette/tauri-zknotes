@@ -2,6 +2,7 @@ mod commands;
 use commands::{greet, pimsg, uimsg, zimsg, ZkState};
 use std::sync::Mutex;
 use std::thread;
+use std::time::SystemTime;
 use tauri::Manager;
 use zknotes_server_lib::err_main;
 
@@ -24,6 +25,9 @@ pub fn run() {
           filepath.push("files");
           let mut temppath = datapath.clone();
           temppath.push("temp");
+
+          let mut logpath = app.path().home_dir().unwrap();
+          logpath.push(format!("{:#?}.zknotes.log", SystemTime::now()));
 
           config.orgauth_config.db = dbpath;
           config.createdirs = true;
@@ -50,7 +54,7 @@ pub fn run() {
 
           let _handler = thread::spawn(|| {
             println!("meh here");
-            match err_main(Some(cc)) {
+            match err_main(Some(cc), Some(logpath)) {
               Err(e) => println!("error: {:?}", e),
               Ok(_) => (),
             }
