@@ -18,7 +18,8 @@ pub fn run() {
       // println!("dbpath: {:?}", dbpath);
       match app.state::<ZkState>().config.lock() {
         Ok(mut config) => {
-          let datapath = app.path().data_dir().unwrap();
+          // let datapath = app.path().data_dir().unwrap();
+          let datapath = app.path().document_dir().unwrap();
           let mut dbpath = datapath.clone();
           dbpath.push("zknotes.db");
           let mut filepath = datapath.clone();
@@ -26,8 +27,16 @@ pub fn run() {
           let mut temppath = datapath.clone();
           temppath.push("temp");
 
-          let mut logpath = app.path().document_dir().unwrap();
-          logpath.push(format!("{:#?}.zknotes.log", SystemTime::now()));
+          let mut logpath = app.path().home_dir().unwrap();
+          let dt: time::OffsetDateTime = SystemTime::now().into();
+          let f = time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]");
+
+          match f.map(|dtf| dt.format(&dtf)) {
+            Ok(Ok(dtf)) => logpath.push(format!("{}.zknotes.log", dtf)),
+            _ => logpath.push("zknotes.log"),
+          };
+
+          println!("logpath {:?}", logpath);
 
           config.orgauth_config.db = dbpath;
           config.createdirs = true;
