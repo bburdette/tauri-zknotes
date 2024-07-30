@@ -26,7 +26,7 @@ pub fn run() {
           let mut temppath = datapath.clone();
           temppath.push("temp");
 
-          let mut logpath = app.path().home_dir().unwrap();
+          let mut logpath = app.path().document_dir().unwrap();
           logpath.push(format!("{:#?}.zknotes.log", SystemTime::now()));
 
           config.orgauth_config.db = dbpath;
