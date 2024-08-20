@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": ["main"],
+  "permissions": [
+    {
+        "identifier": "http:default",
+        "allow": [
+            {
+                "url": "http://localhost:8000"
+            }
+        ]
+    },
+    "path:default",
+    "event:default",
+    "window:default",
+    "webview:default",
+    "app:default",
+    "resources:default",
+    "image:default",
+    "menu:default",
+    "tray:default"
+  ]
+}
