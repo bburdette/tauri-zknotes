@@ -4,22 +4,14 @@
   "description": "enables the default permissions",
   "windows": ["main"],
   "permissions": [
-    {
-        "identifier": "http:default",
-        "allow": [
-            {
-                "url": "http://localhost:8000"
-            }
-        ]
-    },
-    "path:allow-basename",
-    "event:default",
-    "window:default",
-    "webview:default",
-    "app:default",
-    "resources:default",
-    "image:default",
-    "menu:default",
-    "tray:default"
+    "core:path:allow-basename",
+    "core:event:default",
+    "core:window:default",
+    "core:webview:default",
+    "core:app:default",
+    "core:resources:default",
+    "core:image:default",
+    "core:menu:default",
+    "core:tray:default"
   ]
 }

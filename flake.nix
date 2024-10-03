@@ -70,9 +70,9 @@
           # rustPlatform = nixpkgs.makeRustPlatform { cargo = toolchain; rustc = toolchain; };
         };
 
-          # inherit (rustPackages_1_76) rustPlatform;
+        # inherit (rustPackages_1_76) rustPlatform;
 
-        mt = builtins.trace "blah" mobileTargets.rustc;
+        # mt = builtins.trace "blah" mobileTargets.rustc;
 
         # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
         # my-tauri = mytauri { inherit pkgs; };
@@ -188,7 +188,7 @@
             elmPackages.elmi-to-json
             elmPackages.elm-optimize-level-2
             # extra stuff for tauri
-            my-tauri
+            # my-tauri
             curl
             wget
             # dbus
