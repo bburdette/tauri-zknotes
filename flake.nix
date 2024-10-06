@@ -84,9 +84,10 @@
         #   inherit (pkgs.rustPackages_1_76) rustPlatform;
         # };
 
-        mtplatform = pkgs.makeRustPlatform { inherit (fenix.packages.${system}.stable) cargo rustc; };
-        mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { rustPlatform = mtplatform; };
-        my-tauri = mytauri { inherit pkgs; };
+        # wasn't making `cargo tauri` work last time I tried
+        # mtplatform = pkgs.makeRustPlatform { inherit (fenix.packages.${system}.stable) cargo rustc; };
+        # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { rustPlatform = mtplatform; };
+        # my-tauri = mytauri { inherit pkgs; };
 
         # my-tauri-mobile = mytaurimobile { inherit pkgs; };
 
@@ -188,7 +189,7 @@
             elmPackages.elmi-to-json
             elmPackages.elm-optimize-level-2
             # extra stuff for tauri
-            # my-tauri
+            # my-tauri  
             curl
             wget
             # dbus

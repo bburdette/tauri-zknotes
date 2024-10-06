@@ -113,10 +113,10 @@ fn main() {
       }
       Ok(())
     })
-    .register_asynchronous_uri_scheme_protocol("zkfile", |app, request, responder| {
-      println!("fileresp");
-      fileresp(app.state(), request, responder);
-    })
+    // .register_asynchronous_uri_scheme_protocol("zkfile", |app, request, responder| {
+    //   println!("fileresp");
+    //   fileresp(app.state::<ZkState>(), request, responder);
+    // })
     .invoke_handler(tauri::generate_handler![greet, zimsg, pimsg, uimsg])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -16,13 +16,13 @@ let
 in
 rustPlatform.buildRustPackage rec {
   pname = "tauri";
-  version = "2.0.0-rc.9";
+  version = "2.0.1";
 
   src = fetchFromGitHub {
     owner = "tauri-apps";
     repo = pname;
     rev = "tauri-v${version}";
-    sha256 = "sha256-uf5kOwTpfLUtXtDjCwHehdi+9q7xirpmsmSUESVkHKQ=";
+    sha256 = "sha256-kHzpx1o894bo4Ud3D1lbB+pZahflF/o2bb2EDJUI148=";
   };
 
   # Manually specify the sourceRoot since this crate depends on other crates in the workspace. Relevant info at
