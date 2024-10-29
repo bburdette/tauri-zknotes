@@ -1,16 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// use log::{error, info};
-// use serde;
-// use serde_json;
-// use serde_json::Value;
 use std::thread;
 use std::{sync::Mutex, time::SystemTime};
-// use tauri::State;
 use zknotes_server_lib::err_main;
-// use zknotes_server_lib::orgauth::data::WhatMessage;
-// use zknotes_server_lib::orgauth::endpoints::{Callbacks, Tokener, UuidTokener};
-// use zknotes_server_lib::zkprotocol::messages::{PublicMessage, ServerResponse, UserMessage};
 mod commands;
 use commands::{fileresp, greet, pimsg, uimsg, zimsg, ZkState};
 use std::error::Error;
@@ -40,15 +32,6 @@ fn main() {
 
   //   Ok(config)
   // })();
-
-  // spawn the web server in a separate thread.
-  // let handler = thread::spawn(|| {
-  //   println!("meh here");
-  //   match err_main(Some(cc)) {
-  //     Err(e) => println!("error: {:?}", e),
-  //     Ok(_) => (),
-  //   }
-  // });
 
   tauri::Builder::default()
     .manage(ZkState {
@@ -120,12 +103,13 @@ fn main() {
     .invoke_handler(tauri::generate_handler![greet, zimsg, pimsg, uimsg])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
-
-  // #[cfg(desktop)]
-  // app_lib::run();
 }
 
 /*
+
+// this is a promising approach, but there's a bug in webkit that prevents it from working,
+// apparently.
+
 tauri::Builder::default()
   .register_asynchronous_uri_scheme_protocol("app-files", |_app, request, responder| {
     // skip leading `/`

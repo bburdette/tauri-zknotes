@@ -1,24 +1,18 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fs::File;
-use std::io::Read;
-// use actix_files::NamedFile;
-use std::path::Path;
 use std::sync::Mutex;
 use std::time::SystemTime;
+use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
-use zknotes_server_lib::orgauth::data::UserRequestMessage;
-use zknotes_server_lib::{sqldata, UserResponse, UserResponseMessage};
-// use zknotes_server_lib::err_main;
-// use zknotes_server_lib::orgauth::data::WhatMessage;
-use tauri::{http, utils::mime_type, Manager};
 use uuid::Uuid;
 use zknotes_server_lib::error as zkerr;
-use zknotes_server_lib::orgauth::endpoints::{Callbacks, Tokener, UuidTokener};
+use zknotes_server_lib::orgauth::data::UserRequestMessage;
+use zknotes_server_lib::orgauth::endpoints::UuidTokener;
 use zknotes_server_lib::zkprotocol::messages::{
   PrivateMessage, PrivateReplies, PrivateReplyMessage, PublicMessage, PublicReplies,
   PublicReplyMessage,
 };
+use zknotes_server_lib::{sqldata, UserResponse, UserResponseMessage};
 
 pub struct ZkState {
   pub config: Mutex<zknotes_server_lib::config::Config>,

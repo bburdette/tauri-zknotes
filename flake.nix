@@ -2,22 +2,18 @@
   description = "zknotes, a web based zettelkasten";
 
   inputs = {
-    # nixpkgs.url = "path:/home/bburdette/code/nixpkgs";
-    # nixpkgs = { url = "github:nixos/nixpkgs/nixos-unstable"; };
     nixpkgs = { url = "github:nixos/nixpkgs/nixos-24.05"; };
     flake-utils.url = "github:numtide/flake-utils";
-    naersk.url = "github:nmattia/naersk";
+    # naersk.url = "github:nmattia/naersk";
     fenix = {
       url = "github:nix-community/fenix";
-      # url = "github:nix-community/fenix/monthly";
-      # url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # rust-overlay.url = "github:oxalica/rust-overlay";
 
   };
 
-  outputs = { self, nixpkgs, flake-utils, naersk, fenix  }:
+  outputs = { self, nixpkgs, flake-utils, fenix  }:
     let
       # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
       # mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
@@ -69,10 +65,6 @@
           # overlays = [ fenix.overlays.default ];
           # rustPlatform = nixpkgs.makeRustPlatform { cargo = toolchain; rustc = toolchain; };
         };
-
-        # inherit (rustPackages_1_76) rustPlatform;
-
-        # mt = builtins.trace "blah" mobileTargets.rustc;
 
         # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
         # my-tauri = mytauri { inherit pkgs; };

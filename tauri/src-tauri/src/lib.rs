@@ -8,7 +8,6 @@ use zknotes_server_lib::err_main;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  // spawn the web server in a separate thread.
   tauri::Builder::default()
     .manage(ZkState {
       config: Mutex::new(zknotes_server_lib::defcon()),
@@ -61,6 +60,7 @@ pub fn run() {
 
           let cc = config.clone();
 
+          // spawn the web server in a separate thread.
           let _handler = thread::spawn(|| {
             println!("meh here");
             match err_main(Some(cc), Some(logpath)) {
