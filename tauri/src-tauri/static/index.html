@@ -14,16 +14,15 @@
     <div id="elm"></div>
     <script type="text/javascript">
       // login = {{logindata}};
-      // sysids = {{sysids}};
       // errorid = {{errorid}};
       // adminsettings = {{adminsettings}};
       // login = {"active":true,"admin":true,"data":{"homenote":2623,"userid":2,"zknote":309},"email":"bburdette@protonmail.com","name":"ben","userid":2};
       login = null;
-      sysids = {"commentid":6,"publicid":1,"searchid":3,"shareid":2};
       errorid = null;
       adminsettings = {"non_admin_invite":true,"open_registration":true, "send_emails":false, "remote_registration":true};
       
-      const { invoke } = window.__TAURI__.tauri
+      // const { invoke } = window.__TAURI__.tauri;
+      const invoke = window.__TAURI_INTERNALS__.invoke;
 
       function sendZIValueTauri(request) {
         console.log("sendZIValueTauri", request);
@@ -82,13 +81,13 @@
         node: document.getElementById('elm'),
         flags: { seed : Math.floor(Math.random()*0x0FFFFFFF),
                  location : document.location.origin || "",
+                 filelocation : "http://localhost:8000",  // hardcoded for now!
                  useragent : navigator.userAgent,
                  debugstring : "initial-info",
                  width : window.innerWidth,
                  height : window.innerHeight,
                  errorid : errorid,
                  login : login,
-                 sysids : sysids,
                  adminsettings : adminsettings,
                  tauri : true}});
       // local storage
