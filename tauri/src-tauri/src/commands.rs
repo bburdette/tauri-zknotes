@@ -6,8 +6,9 @@ use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
 use uuid::Uuid;
 use zknotes_server_lib::error as zkerr;
-use zknotes_server_lib::orgauth::data::UserRequestMessage;
+use zknotes_server_lib::orgauth::data::{LoginData, UserRequestMessage};
 use zknotes_server_lib::orgauth::endpoints::UuidTokener;
+use zknotes_server_lib::sqldata::get_single_value;
 use zknotes_server_lib::zkprotocol::messages::{
   PrivateMessage, PrivateReplies, PrivateReplyMessage, PublicMessage, PublicReplies,
   PublicReplyMessage,
@@ -23,6 +24,21 @@ pub struct ZkState {
 pub fn greet(name: &str) -> String {
   println!("greeet");
   format!("Hello, {}!", name)
+}
+
+#[tauri::command]
+pub fn login_data(state: State<ZkState>) -> Option<LoginData> {
+  let conn =
+    match sqldata::connection_open(state.config.lock().unwrap().orgauth_config.db.as_path()) {
+      Ok(c) => c,
+      Err(_e) => {
+        return None;
+      }
+    };
+
+  get_single_value(&conn, "last_login")
+    .ok()
+    .and_then(|x| x.and_then(|s| serde_json::from_str::<LoginData>(s.as_str()).ok()))
 }
 
 #[derive(Serialize, Deserialize)]
