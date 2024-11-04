@@ -1,10 +1,12 @@
 mod commands;
-use commands::{greet, pimsg, uimsg, zimsg, ZkState};
+use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
 use std::sync::Mutex;
 use std::thread;
 use std::time::SystemTime;
 use tauri::Manager;
 use zknotes_server_lib::err_main;
+
+// THIS IS THE ONE FOR ANDROID!
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -73,7 +75,9 @@ pub fn run() {
       }
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![greet, zimsg, pimsg, uimsg])
+    .invoke_handler(tauri::generate_handler![
+      greet, zimsg, pimsg, uimsg, login_data
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

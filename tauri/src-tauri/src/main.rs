@@ -4,12 +4,13 @@ use std::thread;
 use std::{sync::Mutex, time::SystemTime};
 use zknotes_server_lib::err_main;
 mod commands;
-use commands::{fileresp, greet, pimsg, uimsg, zimsg, ZkState};
-use std::error::Error;
-use tauri::{http, utils::mime_type, Manager};
+use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
+use tauri::Manager;
 use time;
 
 const DATE_FORMAT_STR: &'static str = "%Y-%m-%dT%H:%M:%S";
+
+// THIS IS THE ONE FOR DESKTOP!
 
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 fn main() {
@@ -100,7 +101,9 @@ fn main() {
     //   println!("fileresp");
     //   fileresp(app.state::<ZkState>(), request, responder);
     // })
-    .invoke_handler(tauri::generate_handler![greet, zimsg, pimsg, uimsg])
+    .invoke_handler(tauri::generate_handler![
+      greet, zimsg, pimsg, uimsg, login_data
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
