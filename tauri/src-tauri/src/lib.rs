@@ -6,6 +6,8 @@ use std::time::SystemTime;
 use tauri::Manager;
 use zknotes_server_lib::err_main;
 
+// THIS IS THE ONE FOR ANDROID!
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()

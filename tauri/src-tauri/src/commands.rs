@@ -8,7 +8,7 @@ use uuid::Uuid;
 use zknotes_server_lib::error as zkerr;
 use zknotes_server_lib::orgauth::data::{LoginData, UserRequestMessage};
 use zknotes_server_lib::orgauth::endpoints::UuidTokener;
-use zknotes_server_lib::sqldata::get_single_value;
+use zknotes_server_lib::sqldata::{get_single_value, set_single_value};
 use zknotes_server_lib::zkprotocol::messages::{
   PrivateMessage, PrivateReplies, PrivateReplyMessage, PublicMessage, PublicReplies,
   PublicReplyMessage,
@@ -27,18 +27,18 @@ pub fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-pub fn login_data(state: State<ZkState>) -> Option<LoginData> {
+pub fn login_data(state: State<ZkState>) -> Result<Option<LoginData>, String> {
   let conn =
     match sqldata::connection_open(state.config.lock().unwrap().orgauth_config.db.as_path()) {
       Ok(c) => c,
-      Err(_e) => {
-        return None;
+      Err(e) => {
+        return Err(e.to_string());
       }
     };
 
   get_single_value(&conn, "last_login")
-    .ok()
-    .and_then(|x| x.and_then(|s| serde_json::from_str::<LoginData>(s.as_str()).ok()))
+    .and_then(|x| Ok(x.and_then(|s| serde_json::from_str::<LoginData>(s.as_str()).ok())))
+    .map_err(|e| e.to_string())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -263,14 +263,36 @@ pub fn uimsg(state: State<ZkState>, msg: UserRequestMessage) -> UserResponseMess
 
   let mut ut = UuidTokener { uuid: None };
 
+  let ustate = state.config.lock().unwrap();
+
   let sr = match tauri::async_runtime::block_on(zknotes_server_lib::interfaces::user_interface(
-    &mut ut,
-    &state.config.lock().unwrap(),
-    msg,
+    &mut ut, &ustate, msg,
   )) {
     Ok(sr) => {
-      println!("sr: {:?}", sr.what);
       // serde_json::to_value(&sr).unwrap());
+      match (&sr.what, sr.data.clone()) {
+        (UserResponse::LoggedIn, Some(d)) => {
+          let conn = match sqldata::connection_open(ustate.orgauth_config.db.as_path()) {
+            Ok(c) => c,
+            Err(e) => {
+              return UserResponseMessage {
+                what: UserResponse::ServerError,
+                data: Some("unable to connect to database.".into()),
+              };
+            }
+          };
+          match set_single_value(&conn, "last_login", d.to_string().as_str()) {
+            Ok(c) => c,
+            Err(_e) => {
+              return UserResponseMessage {
+                what: UserResponse::ServerError,
+                data: Some("error saving last login.".into()),
+              };
+            }
+          };
+        }
+        _ => {}
+      }
       sr
     }
     Err(e) => UserResponseMessage {
@@ -278,8 +300,6 @@ pub fn uimsg(state: State<ZkState>, msg: UserRequestMessage) -> UserResponseMess
       data: Some(Value::String(e.to_string())),
     },
   };
-
-  println!("ut {:?}", ut.uuid);
 
   sr
 }
