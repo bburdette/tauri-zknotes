@@ -6,6 +6,8 @@ Submodules employed liberally so `git submodule update --init --recursive` befor
 
 We're assuming you have the nix package manager installed.  If on nixos, you'll probably need nix-ld enabled.
 
+**note** I'm currently doing the build on debian, so don't look to this for a nix android build example.  I did at one time have this producing an android apk with a nix build, but I broke it.  
+
 On the first build you'll need to init to make the tauri generated code.  Something like this:
 
 ```
