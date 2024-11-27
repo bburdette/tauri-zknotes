@@ -1,4 +1,3 @@
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 mod commands;
 use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
 use girlboss::Girlboss;
@@ -12,6 +11,7 @@ use zknotes_server_lib::state::State;
 
 // THIS IS THE ONE FOR ANDROID!
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let gb: Girlboss<JobId> = Girlboss::new();
   let state = State {
