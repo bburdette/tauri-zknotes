@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::SystemTime;
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
@@ -16,7 +16,7 @@ use zknotes_server_lib::zkprotocol::messages::{
 use zknotes_server_lib::{sqldata, UserResponse, UserResponseMessage};
 
 pub struct ZkState {
-  pub config: Mutex<zknotes_server_lib::config::Config>,
+  pub state: Arc<RwLock<zknotes_server_lib::state::State>>,
   pub uid: Mutex<Option<i64>>,
 }
 
@@ -28,13 +28,21 @@ pub fn greet(name: &str) -> String {
 
 #[tauri::command]
 pub fn login_data(state: State<ZkState>) -> Result<Option<LoginData>, String> {
-  let conn =
-    match sqldata::connection_open(state.config.lock().unwrap().orgauth_config.db.as_path()) {
-      Ok(c) => c,
-      Err(e) => {
-        return Err(e.to_string());
-      }
-    };
+  let conn = match sqldata::connection_open(
+    state
+      .state
+      .read()
+      .unwrap()
+      .config
+      .orgauth_config
+      .db
+      .as_path(),
+  ) {
+    Ok(c) => c,
+    Err(e) => {
+      return Err(e.to_string());
+    }
+  };
 
   get_single_value(&conn, "last_login")
     .and_then(|x| Ok(x.and_then(|s| serde_json::from_str::<LoginData>(s.as_str()).ok())))
@@ -75,15 +83,23 @@ pub fn fileresp_helper(
   request: tauri::http::Request<Vec<u8>>,
   usr: UriSchemeResponder,
 ) -> Result<(), (UriSchemeResponder, zkerr::Error)> {
-  let conn =
-    match sqldata::connection_open(state.config.lock().unwrap().orgauth_config.db.as_path()) {
-      Ok(c) => c,
-      Err(e) => {
-        return Err((usr, e));
-      }
-    };
+  let conn = match sqldata::connection_open(
+    state
+      .state
+      .read()
+      .unwrap()
+      .config
+      .orgauth_config
+      .db
+      .as_path(),
+  ) {
+    Ok(c) => c,
+    Err(e) => {
+      return Err((usr, e));
+    }
+  };
 
-  let config_clone = state.config.lock().unwrap().clone();
+  let config_clone = state.state.read().unwrap().config.clone();
 
   let uid = Some(2);
 
@@ -145,7 +161,7 @@ pub fn fileresp_helper(
     }
   };
 
-  let zkln = match sqldata::read_zklistnote(&conn, &config_clone.file_path, uid, nid) {
+  let _zkln = match sqldata::read_zklistnote(&conn, &config_clone.file_path, uid, nid) {
     Ok(x) => x,
     Err(e) => {
       return Err((usr, e.into()));
@@ -175,13 +191,14 @@ pub fn zimsg(state: State<ZkState>, msg: PrivateMessage) -> PrivateTimedData {
 
   println!("zimsg");
 
-  let config_clone = state.config.lock().unwrap().clone();
+  let stateclone = state.state.clone();
 
   // let res = tauri::async_runtime::block_on(async move {
   let res = std::thread::spawn(move || {
     let rt = actix_rt::System::new();
+    let state = stateclone.write().unwrap();
     // let serv = atomic_server_lib::serve::serve(config_clone);
-    let zkres = zknotes_server_lib::interfaces::zk_interface_loggedin(&config_clone, 2, &msg);
+    let zkres = zknotes_server_lib::interfaces::zk_interface_loggedin(&state, 2, &msg);
     match (
       rt.block_on(zkres),
       SystemTime::now()
@@ -224,7 +241,11 @@ pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
   println!("pimsg");
 
   match (
-    zknotes_server_lib::interfaces::public_interface(&state.config.lock().unwrap(), msg, None),
+    zknotes_server_lib::interfaces::public_interface(
+      &state.state.read().unwrap().config,
+      msg,
+      None,
+    ),
     SystemTime::now()
       .duration_since(SystemTime::UNIX_EPOCH)
       .map(|n| n.as_millis()),
@@ -263,7 +284,7 @@ pub fn uimsg(state: State<ZkState>, msg: UserRequestMessage) -> UserResponseMess
 
   let mut ut = UuidTokener { uuid: None };
 
-  let ustate = state.config.lock().unwrap();
+  let ustate = state.state.read().unwrap().config.clone();
 
   let sr = match tauri::async_runtime::block_on(zknotes_server_lib::interfaces::user_interface(
     &mut ut, &ustate, msg,
