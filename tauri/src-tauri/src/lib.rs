@@ -23,7 +23,6 @@ pub fn run() {
   tauri::Builder::default()
     .manage(ZkState {
       state: Arc::new(RwLock::new(state)),
-      uid: Mutex::new(None),
     })
     .setup(|app| {
       // println!("dbpath: {:?}", dbpath);
@@ -73,12 +72,9 @@ pub fn run() {
           let cc = state.config.clone();
 
           // spawn the web server in a separate thread.
-          let _handler = thread::spawn(|| {
-            println!("meh here");
-            match err_main(Some(cc), Some(logpath)) {
-              Err(e) => println!("error: {:?}", e),
-              Ok(_) => (),
-            }
+          let _handler = thread::spawn(|| match err_main(Some(cc), Some(logpath)) {
+            Err(e) => println!("error: {:?}", e),
+            Ok(_) => (),
           });
         }
         Err(_) => (),

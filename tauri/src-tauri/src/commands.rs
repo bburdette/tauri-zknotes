@@ -17,7 +17,6 @@ use zknotes_server_lib::{sqldata, UserResponse, UserResponseMessage};
 
 pub struct ZkState {
   pub state: Arc<RwLock<zknotes_server_lib::state::State>>,
-  pub uid: Mutex<Option<i64>>,
 }
 
 #[tauri::command]
@@ -185,7 +184,7 @@ pub fn fileresp_helper(
 }
 
 #[tauri::command]
-pub fn zimsg(state: State<ZkState>, msg: PrivateMessage) -> PrivateTimedData {
+pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<PrivateTimedData, ()> {
   // gonna need config obj, uid.
   // uid could be passed from elm maybe.
 
@@ -230,7 +229,7 @@ pub fn zimsg(state: State<ZkState>, msg: PrivateMessage) -> PrivateTimedData {
     }
   });
 
-  res.join().unwrap()
+  Ok(res.join().unwrap())
 }
 
 #[tauri::command]
