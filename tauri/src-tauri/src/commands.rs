@@ -1,13 +1,15 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::Mutex;
+use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
 use uuid::Uuid;
 use zknotes_server_lib::error as zkerr;
 use zknotes_server_lib::orgauth::data::{LoginData, UserRequestMessage};
-use zknotes_server_lib::orgauth::endpoints::UuidTokener;
+use zknotes_server_lib::orgauth::dbfun;
+use zknotes_server_lib::orgauth::endpoints::{Callbacks, UuidTokener};
+use zknotes_server_lib::rusqlite::{bypass_sqlite_initialization, Connection};
 use zknotes_server_lib::sqldata::{get_single_value, set_single_value};
 use zknotes_server_lib::zkprotocol::messages::{
   PrivateMessage, PrivateReplies, PrivateReplyMessage, PublicMessage, PublicReplies,
@@ -16,8 +18,7 @@ use zknotes_server_lib::zkprotocol::messages::{
 use zknotes_server_lib::{sqldata, UserResponse, UserResponseMessage};
 
 pub struct ZkState {
-  pub config: Mutex<zknotes_server_lib::config::Config>,
-  pub uid: Mutex<Option<i64>>,
+  pub state: Arc<RwLock<zknotes_server_lib::state::State>>,
 }
 
 #[tauri::command]
@@ -28,17 +29,34 @@ pub fn greet(name: &str) -> String {
 
 #[tauri::command]
 pub fn login_data(state: State<ZkState>) -> Result<Option<LoginData>, String> {
-  let conn =
-    match sqldata::connection_open(state.config.lock().unwrap().orgauth_config.db.as_path()) {
-      Ok(c) => c,
-      Err(e) => {
-        return Err(e.to_string());
-      }
-    };
+  let st = state.state.read().unwrap();
+  let conn = match sqldata::connection_open(st.config.orgauth_config.db.as_path()) {
+    Ok(c) => c,
+    Err(e) => {
+      return Err(e.to_string());
+    }
+  };
 
+  get_tauri_login_data(&conn, &mut sqldata::zknotes_callbacks()).map_err(|e| e.to_string())
+}
+
+pub fn get_tauri_uid(conn: &Connection) -> Result<Option<i64>, zkerr::Error> {
   get_single_value(&conn, "last_login")
-    .and_then(|x| Ok(x.and_then(|s| serde_json::from_str::<LoginData>(s.as_str()).ok())))
-    .map_err(|e| e.to_string())
+    .and_then(|x| Ok(x.and_then(|s| serde_json::from_str::<i64>(s.as_str()).ok())))
+}
+
+pub fn get_tauri_login_data(
+  conn: &Connection,
+  callbacks: &mut Callbacks,
+) -> Result<Option<LoginData>, zkerr::Error> {
+  let uid = match get_tauri_uid(&conn)? {
+    Some(uid) => uid,
+    None => return Ok(None),
+  };
+  let mut ld = dbfun::login_data(&conn, uid)?;
+  let data = (callbacks.extra_login_data)(&conn, ld.userid)?;
+  ld.data = data;
+  Ok(Some(ld))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -75,17 +93,28 @@ pub fn fileresp_helper(
   request: tauri::http::Request<Vec<u8>>,
   usr: UriSchemeResponder,
 ) -> Result<(), (UriSchemeResponder, zkerr::Error)> {
-  let conn =
-    match sqldata::connection_open(state.config.lock().unwrap().orgauth_config.db.as_path()) {
-      Ok(c) => c,
-      Err(e) => {
-        return Err((usr, e));
-      }
-    };
+  let conn = match sqldata::connection_open(
+    state
+      .state
+      .read()
+      .unwrap()
+      .config
+      .orgauth_config
+      .db
+      .as_path(),
+  ) {
+    Ok(c) => c,
+    Err(e) => {
+      return Err((usr, e));
+    }
+  };
 
-  let config_clone = state.config.lock().unwrap().clone();
+  let config_clone = state.state.read().unwrap().config.clone();
 
-  let uid = Some(2);
+  let uid = match get_tauri_uid(&conn) {
+    Ok(ld) => ld,
+    Err(e) => return Err((usr, e)),
+  };
 
   let noteid = match request
     .uri()
@@ -145,7 +174,7 @@ pub fn fileresp_helper(
     }
   };
 
-  let zkln = match sqldata::read_zklistnote(&conn, &config_clone.file_path, uid, nid) {
+  let _zkln = match sqldata::read_zklistnote(&conn, &config_clone.file_path, uid, nid) {
     Ok(x) => x,
     Err(e) => {
       return Err((usr, e.into()));
@@ -169,76 +198,79 @@ pub fn fileresp_helper(
 }
 
 #[tauri::command]
-pub fn zimsg(state: State<ZkState>, msg: PrivateMessage) -> PrivateTimedData {
-  // gonna need config obj, uid.
-  // uid could be passed from elm maybe.
-
+pub fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> PrivateTimedData {
   println!("zimsg");
 
-  let config_clone = state.config.lock().unwrap().clone();
-
-  // let res = tauri::async_runtime::block_on(async move {
-  let res = std::thread::spawn(move || {
-    let rt = actix_rt::System::new();
-    // let serv = atomic_server_lib::serve::serve(config_clone);
-    let zkres = zknotes_server_lib::interfaces::zk_interface_loggedin(&config_clone, 2, &msg);
-    match (
-      rt.block_on(zkres),
-      SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|n| n.as_millis()),
-    ) {
-      (Ok(sr), Ok(t)) => {
-        println!("sr: {:?}", sr.what);
-        // serde_json::to_value(&sr).unwrap());
-        PrivateTimedData {
-          utcmillis: t,
-          data: sr,
-        }
-      }
-      (Err(e), _) => PrivateTimedData {
-        utcmillis: 0,
-        data: PrivateReplyMessage {
-          what: PrivateReplies::ServerError,
-          content: Value::String(e.to_string()),
-        },
+  match zimsg_err(state, msg) {
+    Ok(ptd) => ptd,
+    Err(e) => PrivateTimedData {
+      utcmillis: 0,
+      data: PrivateReplyMessage {
+        what: PrivateReplies::ServerError,
+        content: Value::String(e.to_string()),
       },
-      (_, Err(e)) => PrivateTimedData {
-        utcmillis: 0,
-        data: PrivateReplyMessage {
-          what: PrivateReplies::ServerError,
-          content: Value::String(e.to_string()),
-        },
-      },
-    }
-  });
+    },
+  }
+}
 
-  res.join().unwrap()
+pub fn zimsg_err(
+  state: State<'_, ZkState>,
+  msg: PrivateMessage,
+) -> Result<PrivateTimedData, zkerr::Error> {
+  let conn = sqldata::connection_open(
+    state
+      .state
+      .read()
+      .unwrap()
+      .config
+      .orgauth_config
+      .db
+      .as_path(),
+  )?;
+  let uid =
+    get_tauri_uid(&conn)?.ok_or(zkerr::Error::String("zimsg: not logged in".to_string()))?;
+
+  let sr = tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
+    &state.state.read().unwrap(), // TODO fix
+    uid,
+    &msg,
+  ));
+
+  let dt = sr?;
+
+  let st = SystemTime::now()
+    .duration_since(SystemTime::UNIX_EPOCH)?
+    .as_millis();
+
+  Ok(PrivateTimedData {
+    utcmillis: st,
+    data: dt,
+  })
 }
 
 #[tauri::command]
 pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
-  // gonna need config obj, uid.
-  // uid could be passed from elm maybe.
-
   println!("pimsg");
 
   match (
-    zknotes_server_lib::interfaces::public_interface(&state.config.lock().unwrap(), msg, None),
+    zknotes_server_lib::interfaces::public_interface(
+      &state.state.read().unwrap().config,
+      msg,
+      None,
+    ),
     SystemTime::now()
       .duration_since(SystemTime::UNIX_EPOCH)
       .map(|n| n.as_millis()),
   ) {
     (Ok(sr), Ok(t)) => {
-      println!("sr: {:?}", sr.what);
       // serde_json::to_value(&sr).unwrap());
       PublicTimedData {
         utcmillis: t,
         data: sr,
       }
     }
-    (Err(e), _) => PublicTimedData {
-      utcmillis: 0,
+    (Err(e), Ok(t)) => PublicTimedData {
+      utcmillis: t,
       data: PublicReplyMessage {
         what: PublicReplies::ServerError,
         content: Value::String(e.to_string()),
@@ -256,40 +288,54 @@ pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
 
 #[tauri::command]
 pub fn uimsg(state: State<ZkState>, msg: UserRequestMessage) -> UserResponseMessage {
-  // gonna need config obj, uid.
-  // uid could be passed from elm maybe.
-
   println!("uimsg");
 
-  let mut ut = UuidTokener { uuid: None };
+  match uimsg_err(state, msg) {
+    Ok(ptd) => ptd,
+    Err(e) => UserResponseMessage {
+      what: UserResponse::ServerError,
+      data: Some(Value::String(e.to_string())),
+    },
+  }
+}
+pub fn uimsg_err(
+  state: State<ZkState>,
+  msg: UserRequestMessage,
+) -> Result<UserResponseMessage, zkerr::Error> {
+  println!("uimsg");
 
-  let ustate = state.config.lock().unwrap();
+  let conn = sqldata::connection_open(
+    state
+      .state
+      .read()
+      .unwrap()
+      .config
+      .orgauth_config
+      .db
+      .as_path(),
+  )?;
+  let ld = get_tauri_login_data(&conn, &mut sqldata::zknotes_callbacks())?;
+
+  let mut ut = UuidTokener {
+    uuid: ld.map(|ld| ld.uuid),
+  };
+
+  let ustate = state.state.read().unwrap().config.clone();
 
   let sr = match tauri::async_runtime::block_on(zknotes_server_lib::interfaces::user_interface(
     &mut ut, &ustate, msg,
   )) {
     Ok(sr) => {
-      // serde_json::to_value(&sr).unwrap());
       match (&sr.what, sr.data.clone()) {
         (UserResponse::LoggedIn, Some(d)) => {
-          let conn = match sqldata::connection_open(ustate.orgauth_config.db.as_path()) {
-            Ok(c) => c,
-            Err(e) => {
-              return UserResponseMessage {
-                what: UserResponse::ServerError,
-                data: Some("unable to connect to database.".into()),
-              };
-            }
-          };
-          match set_single_value(&conn, "last_login", d.to_string().as_str()) {
-            Ok(c) => c,
-            Err(_e) => {
-              return UserResponseMessage {
-                what: UserResponse::ServerError,
-                data: Some("error saving last login.".into()),
-              };
-            }
-          };
+          let ld = serde_json::from_value::<LoginData>(d)?;
+          set_single_value(&conn, "last_login", ld.userid.to_string().as_str())
+            .map_err(|e| zkerr::annotate_string("error saving last login.".to_string(), e))?;
+        }
+        (UserResponse::LoggedOut, _) => {
+          set_single_value(&conn, "last_login", "").map_err(|e| {
+            zkerr::annotate_string("error saving logged out status.".to_string(), e)
+          })?;
         }
         _ => {}
       }
@@ -301,27 +347,5 @@ pub fn uimsg(state: State<ZkState>, msg: UserRequestMessage) -> UserResponseMess
     },
   };
 
-  sr
+  Ok(sr)
 }
-
-// #[tauri::command]
-// pub fn aimsg(msg: UserMessage) -> ServerResponse {
-//   // gonna need config obj, uid.
-//   // uid could be passed from elm maybe.
-
-//   println!("aimsg");
-
-//   let c = zknotes_server_lib::defcon();
-
-//   match zknotes_server_lib::interfaces::admin_interface(&c, 2, &msg) {
-//     Ok(sr) => {
-//       println!("sr: {}", sr.what);
-//       // serde_json::to_value(&sr).unwrap());
-//       sr
-//     }
-//     Err(e) => ServerResponse {
-//       what: "erro".to_string(),
-//       content: Value::String("erro".to_string()),
-//     },
-//   }
-// }

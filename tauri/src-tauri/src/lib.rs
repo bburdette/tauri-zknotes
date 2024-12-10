@@ -1,24 +1,33 @@
 mod commands;
 use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
-use std::sync::Mutex;
+use girlboss::Girlboss;
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::SystemTime;
 use tauri::Manager;
 use zknotes_server_lib::err_main;
+use zknotes_server_lib::jobs::JobId;
+use zknotes_server_lib::state::State;
 
 // THIS IS THE ONE FOR ANDROID!
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  let gb: Girlboss<JobId> = Girlboss::new();
+  let state = State {
+    config: zknotes_server_lib::defcon(),
+    girlboss: gb,
+    jobcounter: { RwLock::new(0 as i64) },
+  };
+
   tauri::Builder::default()
     .manage(ZkState {
-      config: Mutex::new(zknotes_server_lib::defcon()),
-      uid: Mutex::new(None),
+      state: Arc::new(RwLock::new(state)),
     })
     .setup(|app| {
       // println!("dbpath: {:?}", dbpath);
-      match app.state::<ZkState>().config.lock() {
-        Ok(mut config) => {
+      match app.state::<ZkState>().state.write() {
+        Ok(mut state) => {
           // let datapath = app.path().data_dir().unwrap();
           let datapath = app.path().document_dir().unwrap();
           let mut dbpath = datapath.clone();
@@ -39,36 +48,33 @@ pub fn run() {
 
           println!("logpath {:?}", logpath);
 
-          config.orgauth_config.db = dbpath;
-          config.createdirs = true;
-          config.file_path = filepath;
-          config.file_tmp_path = temppath;
-          config.orgauth_config.open_registration = true;
+          state.config.orgauth_config.db = dbpath;
+          state.config.createdirs = true;
+          state.config.file_path = filepath;
+          state.config.file_tmp_path = temppath;
+          state.config.orgauth_config.open_registration = true;
 
           zknotes_server_lib::sqldata::dbinit(
-            config.orgauth_config.db.as_path(),
-            config.orgauth_config.login_token_expiration_ms,
+            state.config.orgauth_config.db.as_path(),
+            state.config.orgauth_config.login_token_expiration_ms,
           )?;
 
           // verify/create file directories.
-          if config.createdirs {
-            if !std::path::Path::exists(&config.file_tmp_path) {
-              std::fs::create_dir_all(&config.file_tmp_path)?
+          if state.config.createdirs {
+            if !std::path::Path::exists(&state.config.file_tmp_path) {
+              std::fs::create_dir_all(&state.config.file_tmp_path)?
             }
-            if !std::path::Path::exists(&config.file_path) {
-              std::fs::create_dir_all(&config.file_path)?
+            if !std::path::Path::exists(&state.config.file_path) {
+              std::fs::create_dir_all(&state.config.file_path)?
             }
           }
 
-          let cc = config.clone();
+          let cc = state.config.clone();
 
           // spawn the web server in a separate thread.
-          let _handler = thread::spawn(|| {
-            println!("meh here");
-            match err_main(Some(cc), Some(logpath)) {
-              Err(e) => println!("error: {:?}", e),
-              Ok(_) => (),
-            }
+          let _handler = thread::spawn(|| match err_main(Some(cc), Some(logpath)) {
+            Err(e) => println!("error: {:?}", e),
+            Ok(_) => (),
           });
         }
         Err(_) => (),
