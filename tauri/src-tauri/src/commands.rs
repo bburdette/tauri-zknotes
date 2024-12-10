@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
@@ -8,6 +8,7 @@ use uuid::Uuid;
 use zknotes_server_lib::error as zkerr;
 use zknotes_server_lib::orgauth::data::{LoginData, UserRequestMessage};
 use zknotes_server_lib::orgauth::endpoints::UuidTokener;
+use zknotes_server_lib::rusqlite::Connection;
 use zknotes_server_lib::sqldata::{get_single_value, set_single_value};
 use zknotes_server_lib::zkprotocol::messages::{
   PrivateMessage, PrivateReplies, PrivateReplyMessage, PublicMessage, PublicReplies,
@@ -46,6 +47,11 @@ pub fn login_data(state: State<ZkState>) -> Result<Option<LoginData>, String> {
   get_single_value(&conn, "last_login")
     .and_then(|x| Ok(x.and_then(|s| serde_json::from_str::<LoginData>(s.as_str()).ok())))
     .map_err(|e| e.to_string())
+}
+
+pub fn get_tauri_login_data(conn: &Connection) -> Result<Option<LoginData>, zkerr::Error> {
+  get_single_value(&conn, "last_login")
+    .and_then(|x| Ok(x.and_then(|s| serde_json::from_str::<LoginData>(s.as_str()).ok())))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -100,7 +106,12 @@ pub fn fileresp_helper(
 
   let config_clone = state.state.read().unwrap().config.clone();
 
-  let uid = Some(2);
+  let ld = match get_tauri_login_data(&conn) {
+    Ok(ld) => ld,
+    Err(e) => return Err((usr, e)),
+  };
+
+  let uid = ld.map(|ld| ld.userid);
 
   let noteid = match request
     .uri()
@@ -185,47 +196,58 @@ pub fn fileresp_helper(
 
 #[tauri::command]
 pub fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<PrivateTimedData, ()> {
+  match zimsg_err(state, msg) {
+    Ok(ptd) => Ok(ptd),
+    Err(e) => Ok(PrivateTimedData {
+      utcmillis: 0,
+      data: PrivateReplyMessage {
+        what: PrivateReplies::ServerError,
+        content: Value::String(e.to_string()),
+      },
+    }),
+  }
+}
+
+pub fn zimsg_err(
+  state: State<'_, ZkState>,
+  msg: PrivateMessage,
+) -> Result<PrivateTimedData, zkerr::Error> {
   // gonna need config obj, uid.
   // uid could be passed from elm maybe.
 
   println!("zimsg");
 
   // let stateclone = state.state.clone();
+  let conn = sqldata::connection_open(
+    state
+      .state
+      .read()
+      .unwrap()
+      .config
+      .orgauth_config
+      .db
+      .as_path(),
+  )?;
+  let ld = get_tauri_login_data(&conn)?.ok_or(zkerr::Error::String("not logged in".to_string()))?;
 
-  let sr = match (
-    tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
-      &state.state.read().unwrap(), // TODO fix
-      2,
-      &msg,
-    )),
-    SystemTime::now()
-      .duration_since(SystemTime::UNIX_EPOCH)
-      .map(|n| n.as_millis()),
-  ) {
-    (Ok(sr), Ok(t)) => {
-      // serde_json::to_value(&sr).unwrap());
-      PrivateTimedData {
-        utcmillis: t,
-        data: sr,
-      }
-    }
-    (Err(e), _) => PrivateTimedData {
-      utcmillis: 0,
-      data: PrivateReplyMessage {
-        what: PrivateReplies::ServerError,
-        content: Value::String(e.to_string()),
-      },
-    },
-    (_, Err(e)) => PrivateTimedData {
-      utcmillis: 0,
-      data: PrivateReplyMessage {
-        what: PrivateReplies::ServerError,
-        content: Value::String(e.to_string()),
-      },
-    },
-  };
+  let uid = ld.userid;
 
-  Ok(sr)
+  let sr = tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
+    &state.state.read().unwrap(), // TODO fix
+    uid,
+    &msg,
+  ));
+
+  let dt = sr?;
+
+  let st = SystemTime::now()
+    .duration_since(SystemTime::UNIX_EPOCH)?
+    .as_millis();
+
+  Ok(PrivateTimedData {
+    utcmillis: st,
+    data: dt,
+  })
 }
 
 #[tauri::command]
@@ -252,8 +274,8 @@ pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
         data: sr,
       }
     }
-    (Err(e), _) => PublicTimedData {
-      utcmillis: 0,
+    (Err(e), Ok(t)) => PublicTimedData {
+      utcmillis: t,
       data: PublicReplyMessage {
         what: PublicReplies::ServerError,
         content: Value::String(e.to_string()),
