@@ -184,52 +184,48 @@ pub fn fileresp_helper(
 }
 
 #[tauri::command]
-pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<PrivateTimedData, ()> {
+pub fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<PrivateTimedData, ()> {
   // gonna need config obj, uid.
   // uid could be passed from elm maybe.
 
   println!("zimsg");
 
-  let stateclone = state.state.clone();
+  // let stateclone = state.state.clone();
 
-  // let res = tauri::async_runtime::block_on(async move {
-  let res = std::thread::spawn(move || {
-    let rt = actix_rt::System::new();
-    let state = stateclone.write().unwrap();
-    // let serv = atomic_server_lib::serve::serve(config_clone);
-    let zkres = zknotes_server_lib::interfaces::zk_interface_loggedin(&state, 2, &msg);
-    match (
-      rt.block_on(zkres),
-      SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|n| n.as_millis()),
-    ) {
-      (Ok(sr), Ok(t)) => {
-        println!("sr: {:?}", sr.what);
-        // serde_json::to_value(&sr).unwrap());
-        PrivateTimedData {
-          utcmillis: t,
-          data: sr,
-        }
+  let sr = match (
+    tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
+      &state.state.read().unwrap(), // TODO fix
+      2,
+      &msg,
+    )),
+    SystemTime::now()
+      .duration_since(SystemTime::UNIX_EPOCH)
+      .map(|n| n.as_millis()),
+  ) {
+    (Ok(sr), Ok(t)) => {
+      // serde_json::to_value(&sr).unwrap());
+      PrivateTimedData {
+        utcmillis: t,
+        data: sr,
       }
-      (Err(e), _) => PrivateTimedData {
-        utcmillis: 0,
-        data: PrivateReplyMessage {
-          what: PrivateReplies::ServerError,
-          content: Value::String(e.to_string()),
-        },
-      },
-      (_, Err(e)) => PrivateTimedData {
-        utcmillis: 0,
-        data: PrivateReplyMessage {
-          what: PrivateReplies::ServerError,
-          content: Value::String(e.to_string()),
-        },
-      },
     }
-  });
+    (Err(e), _) => PrivateTimedData {
+      utcmillis: 0,
+      data: PrivateReplyMessage {
+        what: PrivateReplies::ServerError,
+        content: Value::String(e.to_string()),
+      },
+    },
+    (_, Err(e)) => PrivateTimedData {
+      utcmillis: 0,
+      data: PrivateReplyMessage {
+        what: PrivateReplies::ServerError,
+        content: Value::String(e.to_string()),
+      },
+    },
+  };
 
-  Ok(res.join().unwrap())
+  Ok(sr)
 }
 
 #[tauri::command]
@@ -250,7 +246,6 @@ pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
       .map(|n| n.as_millis()),
   ) {
     (Ok(sr), Ok(t)) => {
-      println!("sr: {:?}", sr.what);
       // serde_json::to_value(&sr).unwrap());
       PublicTimedData {
         utcmillis: t,
@@ -303,7 +298,7 @@ pub fn uimsg(state: State<ZkState>, msg: UserRequestMessage) -> UserResponseMess
           };
           match set_single_value(&conn, "last_login", d.to_string().as_str()) {
             Ok(c) => c,
-            Err(_e) => {
+            Err(e) => {
               return UserResponseMessage {
                 what: UserResponse::ServerError,
                 data: Some("error saving last login.".into()),
