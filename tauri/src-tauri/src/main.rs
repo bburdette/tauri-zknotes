@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use girlboss::Girlboss;
+use girlboss::{Girlboss, Monitor};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::{sync::Mutex, time::SystemTime};
@@ -38,10 +38,10 @@ fn main() {
   //   Ok(config)
   // })();
 
-  let gb: Girlboss<JobId> = Girlboss::new();
+  let gb: Girlboss<JobId, Monitor> = Girlboss::new();
   let state = State {
     config: zknotes_server_lib::defcon(),
-    girlboss: gb,
+    girlboss: { RwLock::new(gb) },
     jobcounter: { RwLock::new(0 as i64) },
   };
 

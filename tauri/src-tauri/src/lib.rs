@@ -1,6 +1,6 @@
 mod commands;
 use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
-use girlboss::Girlboss;
+use girlboss::{Girlboss, Monitor};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::SystemTime;
@@ -13,10 +13,10 @@ use zknotes_server_lib::state::State;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  let gb: Girlboss<JobId> = Girlboss::new();
+  let gb: Girlboss<JobId, Monitor> = Girlboss::new();
   let state = State {
     config: zknotes_server_lib::defcon(),
-    girlboss: gb,
+    girlboss: { RwLock::new(gb) },
     jobcounter: { RwLock::new(0 as i64) },
   };
 
