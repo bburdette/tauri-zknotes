@@ -3,7 +3,7 @@
 use girlboss::{Girlboss, Monitor};
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::{sync::Mutex, time::SystemTime};
+use std::time::SystemTime;
 use zknotes_server_lib::err_main;
 use zknotes_server_lib::jobs::JobId;
 use zknotes_server_lib::state::State;
@@ -12,32 +12,9 @@ use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
 use tauri::Manager;
 use time;
 
-const DATE_FORMAT_STR: &'static str = "%Y-%m-%dT%H:%M:%S";
-
 // THIS IS THE ONE FOR DESKTOP!
 
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
 fn main() {
-  // let res: Result<zknotes_server_lib::config::Config, Box<dyn Error>> = (|| {
-  //   let config = zknotes_server_lib::load_config("zknotes-tauri-dev.toml")?;
-  //   let ret = zknotes_server_lib::sqldata::dbinit(
-  //     config.orgauth_config.db.as_path(),
-  //     config.orgauth_config.login_token_expiration_ms,
-  //   );
-  //   println!("dbinit ret: {:?}", ret);
-  //   // verify/create file directories.
-  //   if config.createdirs {
-  //     if !std::path::Path::exists(&config.file_tmp_path) {
-  //       std::fs::create_dir_all(&config.file_tmp_path)?;
-  //     }
-  //     if !std::path::Path::exists(&config.file_path) {
-  //       std::fs::create_dir_all(&config.file_path)?;
-  //     }
-  //   }
-
-  //   Ok(config)
-  // })();
-
   let gb: Girlboss<JobId, Monitor> = Girlboss::new();
   let state = State {
     config: zknotes_server_lib::defcon(),
@@ -50,7 +27,6 @@ fn main() {
       state: Arc::new(RwLock::new(state)),
     })
     .setup(|app| {
-      // println!("dbpath: {:?}", dbpath);
       match app.state::<ZkState>().state.write() {
         Ok(mut state) => {
           let datapath = app.path().data_dir().unwrap();

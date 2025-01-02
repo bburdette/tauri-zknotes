@@ -1,7 +1,7 @@
 mod commands;
 use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
 use girlboss::{Girlboss, Monitor};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::SystemTime;
 use tauri::Manager;
