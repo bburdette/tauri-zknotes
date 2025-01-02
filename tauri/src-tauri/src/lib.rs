@@ -16,7 +16,7 @@ pub fn run() {
   let gb: Girlboss<JobId, Monitor> = Girlboss::new();
   let state = State {
     config: zknotes_server_lib::defcon(),
-    girlboss: { RwLock::new(gb) },
+    girlboss: { Arc::new(RwLock::new(gb)) },
     jobcounter: { RwLock::new(0 as i64) },
   };
 

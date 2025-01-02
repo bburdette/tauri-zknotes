@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::{Arc, RwLock};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
 use uuid::Uuid;
@@ -270,6 +270,13 @@ pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<Pri
     ) {
       (Ok(sr), Ok(t)) => {
         println!("sr: {:?}", sr.what);
+
+        // IF a job was started, wait until it completes.
+
+        // if sr.what == PrivateReplies::JobStatus {
+        //   let rr = rt.run();
+        // }
+
         // serde_json::to_value(&sr).unwrap());
         PrivateTimedData {
           utcmillis: t,
@@ -295,6 +302,61 @@ pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<Pri
 
   Ok(res.join().unwrap())
 }
+
+// RUNNING DIRECTLY IN ASYNC FN.
+// DOESN'T WORK BECAUSE FUTURE IS NOT SEND, DUE TO RUSQLITE AND ETC
+// #[tauri::command]
+// pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<PrivateTimedData, ()> {
+//   // gonna need config obj, uid.
+//   // uid could be passed from elm maybe.
+
+//   println!("zimsg");
+
+//   let stateclone = state.state.clone();
+
+//   let zkres =
+//     zknotes_server_lib::interfaces::zk_interface_loggedin(&state.state.read().unwrap(), 2, &msg)
+//       .await;
+//   std::thread::sleep(Duration::from_millis(100));
+//   let res = match (
+//     zkres,
+//     SystemTime::now()
+//       .duration_since(SystemTime::UNIX_EPOCH)
+//       .map(|n| n.as_millis()),
+//   ) {
+//     (Ok(sr), Ok(t)) => {
+//       println!("sr: {:?}", sr.what);
+
+//       // IF a job was started, wait until it completes.
+
+//       // if sr.what == PrivateReplies::JobStatus {
+//       //   let rr = rt.run();
+//       // }
+
+//       // serde_json::to_value(&sr).unwrap());
+//       PrivateTimedData {
+//         utcmillis: t,
+//         data: sr,
+//       }
+//     }
+//     (Err(e), _) => PrivateTimedData {
+//       utcmillis: 0,
+//       data: PrivateReplyMessage {
+//         what: PrivateReplies::ServerError,
+//         content: Value::String(e.to_string()),
+//       },
+//     },
+//     (_, Err(e)) => PrivateTimedData {
+//       utcmillis: 0,
+//       data: PrivateReplyMessage {
+//         what: PrivateReplies::ServerError,
+//         content: Value::String(e.to_string()),
+//       },
+//     },
+//   };
+
+//   Ok(res)
+// }
 
 // #[tauri::command]
 // pub fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> PrivateTimedData {
