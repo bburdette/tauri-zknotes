@@ -201,11 +201,9 @@ pub fn fileresp_helper(
 pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<PrivateTimedData, ()> {
   let stateclone = state.state.clone();
 
-  // let res = tauri::async_runtime::block_on(async move {
   let res = std::thread::spawn(move || {
     let rt = actix_rt::System::new();
     let state = stateclone.write().unwrap();
-    // let serv = atomic_server_lib::serve::serve(config_clone);
     let zkres = tauri_zk_interface_loggedin(&state, &msg);
     match (
       rt.block_on(zkres),
@@ -262,13 +260,10 @@ pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
       .duration_since(SystemTime::UNIX_EPOCH)
       .map(|n| n.as_millis()),
   ) {
-    (Ok(sr), Ok(t)) => {
-      // serde_json::to_value(&sr).unwrap());
-      PublicTimedData {
-        utcmillis: t,
-        data: sr,
-      }
-    }
+    (Ok(sr), Ok(t)) => PublicTimedData {
+      utcmillis: t,
+      data: sr,
+    },
     (Err(e), Ok(t)) => PublicTimedData {
       utcmillis: t,
       data: PublicReplyMessage {
