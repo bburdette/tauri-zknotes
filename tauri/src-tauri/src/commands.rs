@@ -9,7 +9,7 @@ use zknotes_server_lib::error as zkerr;
 use zknotes_server_lib::orgauth::data::{LoginData, UserRequestMessage};
 use zknotes_server_lib::orgauth::dbfun;
 use zknotes_server_lib::orgauth::endpoints::{Callbacks, UuidTokener};
-use zknotes_server_lib::rusqlite::{bypass_sqlite_initialization, Connection};
+use zknotes_server_lib::rusqlite::Connection;
 use zknotes_server_lib::sqldata::{get_single_value, set_single_value};
 use zknotes_server_lib::zkprotocol::messages::{
   PrivateMessage, PrivateReplies, PrivateReplyMessage, PublicMessage, PublicReplies,
@@ -198,54 +198,52 @@ pub fn fileresp_helper(
 }
 
 #[tauri::command]
-pub fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> PrivateTimedData {
-  println!("zimsg");
+pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<PrivateTimedData, ()> {
+  let stateclone = state.state.clone();
 
-  match zimsg_err(state, msg) {
-    Ok(ptd) => ptd,
-    Err(e) => PrivateTimedData {
-      utcmillis: 0,
-      data: PrivateReplyMessage {
-        what: PrivateReplies::ServerError,
-        content: Value::String(e.to_string()),
+  let res = std::thread::spawn(move || {
+    let rt = actix_rt::System::new();
+    let state = stateclone.write().unwrap();
+    let zkres = tauri_zk_interface_loggedin(&state, &msg);
+    match (
+      rt.block_on(zkres),
+      SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|n| n.as_millis()),
+    ) {
+      (Ok(sr), Ok(t)) => PrivateTimedData {
+        utcmillis: t,
+        data: sr,
       },
-    },
-  }
+      (Err(e), _) => PrivateTimedData {
+        utcmillis: 0,
+        data: PrivateReplyMessage {
+          what: PrivateReplies::ServerError,
+          content: Value::String(e.to_string()),
+        },
+      },
+      (_, Err(e)) => PrivateTimedData {
+        utcmillis: 0,
+        data: PrivateReplyMessage {
+          what: PrivateReplies::ServerError,
+          content: Value::String(e.to_string()),
+        },
+      },
+    }
+  });
+
+  Ok(res.join().unwrap())
 }
 
-pub fn zimsg_err(
-  state: State<'_, ZkState>,
-  msg: PrivateMessage,
-) -> Result<PrivateTimedData, zkerr::Error> {
-  let conn = sqldata::connection_open(
-    state
-      .state
-      .read()
-      .unwrap()
-      .config
-      .orgauth_config
-      .db
-      .as_path(),
-  )?;
+pub async fn tauri_zk_interface_loggedin(
+  state: &zknotes_server_lib::state::State,
+  msg: &PrivateMessage,
+) -> Result<PrivateReplyMessage, zkerr::Error> {
+  let conn = sqldata::connection_open(state.config.orgauth_config.db.as_path())?;
   let uid =
     get_tauri_uid(&conn)?.ok_or(zkerr::Error::String("zimsg: not logged in".to_string()))?;
 
-  let sr = tauri::async_runtime::block_on(zknotes_server_lib::interfaces::zk_interface_loggedin(
-    &state.state.read().unwrap(), // TODO fix
-    uid,
-    &msg,
-  ));
-
-  let dt = sr?;
-
-  let st = SystemTime::now()
-    .duration_since(SystemTime::UNIX_EPOCH)?
-    .as_millis();
-
-  Ok(PrivateTimedData {
-    utcmillis: st,
-    data: dt,
-  })
+  zknotes_server_lib::interfaces::zk_interface_loggedin(&state, &conn, uid, &msg).await
 }
 
 #[tauri::command]
@@ -262,13 +260,10 @@ pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
       .duration_since(SystemTime::UNIX_EPOCH)
       .map(|n| n.as_millis()),
   ) {
-    (Ok(sr), Ok(t)) => {
-      // serde_json::to_value(&sr).unwrap());
-      PublicTimedData {
-        utcmillis: t,
-        data: sr,
-      }
-    }
+    (Ok(sr), Ok(t)) => PublicTimedData {
+      utcmillis: t,
+      data: sr,
+    },
     (Err(e), Ok(t)) => PublicTimedData {
       utcmillis: t,
       data: PublicReplyMessage {
@@ -322,6 +317,7 @@ pub fn uimsg_err(
 
   let ustate = state.state.read().unwrap().config.clone();
 
+  // TODO pass &conn in instead of creating a second one in the fn.
   let sr = match tauri::async_runtime::block_on(zknotes_server_lib::interfaces::user_interface(
     &mut ut, &ustate, msg,
   )) {

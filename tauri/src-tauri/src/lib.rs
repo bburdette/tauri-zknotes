@@ -1,7 +1,7 @@
 mod commands;
 use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
-use girlboss::Girlboss;
-use std::sync::{Arc, Mutex, RwLock};
+use girlboss::{Girlboss, Monitor};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::SystemTime;
 use tauri::Manager;
@@ -13,10 +13,10 @@ use zknotes_server_lib::state::State;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  let gb: Girlboss<JobId> = Girlboss::new();
+  let gb: Girlboss<JobId, Monitor> = Girlboss::new();
   let state = State {
     config: zknotes_server_lib::defcon(),
-    girlboss: gb,
+    girlboss: { Arc::new(RwLock::new(gb)) },
     jobcounter: { RwLock::new(0 as i64) },
   };
 
@@ -52,6 +52,7 @@ pub fn run() {
           state.config.createdirs = true;
           state.config.file_path = filepath;
           state.config.file_tmp_path = temppath;
+          state.config.tauri_mode = true;
           state.config.orgauth_config.open_registration = true;
 
           zknotes_server_lib::sqldata::dbinit(
