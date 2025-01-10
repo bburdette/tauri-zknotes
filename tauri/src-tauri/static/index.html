@@ -84,7 +84,7 @@
           app = Elm.Main.init({
             node: document.getElementById('elm'),
             flags: { seed : Math.floor(Math.random()*0x0FFFFFFF),
-                     location : document.location.origin || "",
+                     location : "http://localhost:8000",
                      filelocation : "http://localhost:8000",  // hardcoded for now!
                      useragent : navigator.userAgent,
                      debugstring : "initial-info",

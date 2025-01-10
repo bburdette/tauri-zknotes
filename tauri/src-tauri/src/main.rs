@@ -52,6 +52,7 @@ fn main() {
           state.config.createdirs = true;
           state.config.file_path = filepath;
           state.config.file_tmp_path = temppath;
+          state.config.tauri_mode = true;
           state.config.orgauth_config.open_registration = true;
 
           zknotes_server_lib::sqldata::dbinit(
