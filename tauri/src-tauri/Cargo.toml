@@ -28,4 +28,4 @@ uuid = { version = "1.7", features = ["serde", "v4", "fast-rng"] }
 
 zknotes-server-lib = { path = "../../zknotes/server-lib" }
 time = { version = "0.3.36", features = ["formatting"] }
-girlboss = {version = "1.0.0-alpha.4", features = ["actix-rt"]}
+girlboss = {version = "1.0.0-alpha.4", features = ["actix-rt"] }

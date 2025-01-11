@@ -128,9 +128,9 @@
         androidEnv = pkgs.androidenv.override { licenseAccepted = true; };
         androidComposition = androidEnv.composeAndroidPackages {
           includeNDK = true;
-          # platformToolsVersion = "34.0.5";
-          # buildToolsVersions = [ "34.0.0" ];
-          # platformVersions = [ "33" ];
+          platformToolsVersion = "34.0.5";
+          buildToolsVersions = [ "34.0.0" ];
+          platformVersions = [ "34" ];
           extraLicenses = [
             "android-googletv-license"
             "android-sdk-arm-dbt-license"
@@ -148,11 +148,15 @@
           NIX_LD = "${pkgs.stdenv.cc.libc}/lib/ld-linux-x86-64.so.2";
           ANDROID_HOME = "${androidComposition.androidsdk}/libexec/android-sdk";
           NDK_HOME = "${androidComposition.androidsdk}/libexec/android-sdk/ndk/${builtins.head (pkgs.lib.lists.reverseList (builtins.split "-" "${androidComposition.ndk-bundle}"))}";
-          shellHook =
-            ''
-              # export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
-              export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
-            '';
+          ANDROID_SDK_ROOT = "${androidComposition.androidsdk}/libexec/android-sdk";
+          ANDROID_NDK_ROOT = "${androidComposition.androidsdk}/libexec/android-sdk/ndk-bundle";
+
+          # apparently unnecessary:
+          # shellHook =
+          #   ''
+          #     # export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
+          #     export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
+          #   '';
 
           nativeBuildInputs = with pkgs; [
             androidComposition.androidsdk
