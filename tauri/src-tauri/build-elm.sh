@@ -1,2 +1,3 @@
 cd ../../zknotes/elm
-elm make src/Main.elm --output=../../tauri/src-tauri/static/main.js
+elm-optimize-level-2 src/Main.elm --output=../../tauri/src-tauri/static/main.js
+cd -

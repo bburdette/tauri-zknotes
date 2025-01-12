@@ -6,6 +6,10 @@ Submodules employed liberally so `git submodule update --init --recursive` befor
 
 We're assuming you have the nix package manager installed.  If on nixos, you'll probably nix-ld enabled.  That's `programs.nix-ld.enable = true` in your configuration.nix.
 
+Also, for adb to work you'll need:
+
+users.users.<you>.extraGroups = ["adbusers"];
+
 On the first build you'll need to init to make the tauri generated code.  Something like this:
 
 ```
@@ -16,6 +20,16 @@ cd zknotes/elm
 ./buildprod.sh
 cd ../tauri/src-tauri
 cargo tauri android init
+```
+
+Media files will not work properly in the browser unless you go to the ApplicationManifest.xml in the gen/ folder, and set
+        `android:usesCleartextTraffic="${usesCleartextTraffic}">``
+to this:
+        `android:usesCleartextTraffic="true">`
+
+Then build:
+
+```
 cargo tauri android build --apk -t armv7
 ```
 
