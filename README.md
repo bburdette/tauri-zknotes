@@ -22,10 +22,10 @@ cd ../tauri/src-tauri
 cargo tauri android init
 ```
 
-Media files will not work properly in the browser unless you go to the ApplicationManifest.xml in the gen/ folder, and set
-        `android:usesCleartextTraffic="${usesCleartextTraffic}">``
-to this:
-        `android:usesCleartextTraffic="true">`
+Media files will not work properly in the browser unless you go to the ApplicationManifest.xml in the gen/ folder, and change  
+        `android:usesCleartextTraffic="${usesCleartextTraffic}">`  
+to this:  
+        `android:usesCleartextTraffic="true">`  
 
 Then build:
 
