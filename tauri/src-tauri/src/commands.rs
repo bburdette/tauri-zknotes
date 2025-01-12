@@ -319,7 +319,7 @@ pub fn uimsg_err(
 
   // TODO pass &conn in instead of creating a second one in the fn.
   let sr = match tauri::async_runtime::block_on(zknotes_server_lib::interfaces::user_interface(
-    &mut ut, &ustate, msg,
+    &conn, &mut ut, &ustate, msg,
   )) {
     Ok(sr) => {
       match (&sr.what, sr.data.clone()) {
