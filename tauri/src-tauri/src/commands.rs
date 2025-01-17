@@ -11,10 +11,9 @@ use zknotes_server_lib::orgauth::dbfun;
 use zknotes_server_lib::orgauth::endpoints::{Callbacks, UuidTokener};
 use zknotes_server_lib::rusqlite::Connection;
 use zknotes_server_lib::sqldata::{get_single_value, set_single_value};
-use zknotes_server_lib::zkprotocol::messages::{
-  PrivateMessage, PrivateReplies, PrivateReplyMessage, PublicMessage, PublicReplies,
-  PublicReplyMessage,
-};
+use zknotes_server_lib::zkprotocol::messages::PrivateReplies;
+use zknotes_server_lib::zkprotocol::private::{PrivateError, PrivateReply, PrivateRequest};
+use zknotes_server_lib::zkprotocol::public::{PublicError, PublicReply, PublicRequest};
 use zknotes_server_lib::{sqldata, UserResponse, UserResponseMessage};
 
 pub struct ZkState {
@@ -62,12 +61,12 @@ pub fn get_tauri_login_data(
 #[derive(Serialize, Deserialize)]
 pub struct PrivateTimedData {
   utcmillis: u128,
-  data: PrivateReplyMessage,
+  data: PrivateReply,
 }
 #[derive(Serialize, Deserialize)]
 pub struct PublicTimedData {
   utcmillis: u128,
-  data: PublicReplyMessage,
+  data: PublicReply,
 }
 
 pub fn fileresp(
@@ -198,7 +197,7 @@ pub fn fileresp_helper(
 }
 
 #[tauri::command]
-pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<PrivateTimedData, ()> {
+pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateRequest) -> Result<PrivateTimedData, ()> {
   let stateclone = state.state.clone();
 
   let res = std::thread::spawn(move || {
@@ -217,17 +216,11 @@ pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<Pri
       },
       (Err(e), _) => PrivateTimedData {
         utcmillis: 0,
-        data: PrivateReplyMessage {
-          what: PrivateReplies::ServerError,
-          content: Value::String(e.to_string()),
-        },
+        data: PrivateReply::PvyServerError(PrivateError::PveString(e.to_string())),
       },
       (_, Err(e)) => PrivateTimedData {
         utcmillis: 0,
-        data: PrivateReplyMessage {
-          what: PrivateReplies::ServerError,
-          content: Value::String(e.to_string()),
-        },
+        data: PrivateReply::PvyServerError(PrivateError::PveString(e.to_string())),
       },
     }
   });
@@ -237,8 +230,8 @@ pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateMessage) -> Result<Pri
 
 pub async fn tauri_zk_interface_loggedin(
   state: &zknotes_server_lib::state::State,
-  msg: &PrivateMessage,
-) -> Result<PrivateReplyMessage, zkerr::Error> {
+  msg: &PrivateRequest,
+) -> Result<PrivateReply, zkerr::Error> {
   let conn = sqldata::connection_open(state.config.orgauth_config.db.as_path())?;
   let uid =
     get_tauri_uid(&conn)?.ok_or(zkerr::Error::String("zimsg: not logged in".to_string()))?;
@@ -247,13 +240,13 @@ pub async fn tauri_zk_interface_loggedin(
 }
 
 #[tauri::command]
-pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
+pub fn pimsg(state: State<ZkState>, msg: PublicRequest) -> PublicTimedData {
   println!("pimsg");
 
   match (
     zknotes_server_lib::interfaces::public_interface(
       &state.state.read().unwrap().config,
-      msg,
+      &msg,
       None,
     ),
     SystemTime::now()
@@ -266,17 +259,15 @@ pub fn pimsg(state: State<ZkState>, msg: PublicMessage) -> PublicTimedData {
     },
     (Err(e), Ok(t)) => PublicTimedData {
       utcmillis: t,
-      data: PublicReplyMessage {
-        what: PublicReplies::ServerError,
-        content: Value::String(e.to_string()),
-      },
+      data: PublicReply::PrServerError(PublicError::PbeString(e.to_string())),
+      // PublicReplyMessage {
+      //   what: PublicReplies::ServerError,
+      //   content: Value::String(e.to_string()),
+      // },
     },
     (_, Err(e)) => PublicTimedData {
       utcmillis: 0,
-      data: PublicReplyMessage {
-        what: PublicReplies::ServerError,
-        content: Value::String(e.to_string()),
-      },
+      data: PublicReply::PrServerError(PublicError::PbeString(e.to_string())),
     },
   }
 }
