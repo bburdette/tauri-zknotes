@@ -1,20 +1,18 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
 use uuid::Uuid;
 use zknotes_server_lib::error as zkerr;
-use zknotes_server_lib::orgauth::data::{LoginData, UserRequestMessage};
+use zknotes_server_lib::orgauth::data::{LoginData, UserId, UserRequest};
 use zknotes_server_lib::orgauth::dbfun;
 use zknotes_server_lib::orgauth::endpoints::{Callbacks, UuidTokener};
 use zknotes_server_lib::rusqlite::Connection;
 use zknotes_server_lib::sqldata::{get_single_value, set_single_value};
-use zknotes_server_lib::zkprotocol::messages::PrivateReplies;
 use zknotes_server_lib::zkprotocol::private::{PrivateError, PrivateReply, PrivateRequest};
 use zknotes_server_lib::zkprotocol::public::{PublicError, PublicReply, PublicRequest};
-use zknotes_server_lib::{sqldata, UserResponse, UserResponseMessage};
+use zknotes_server_lib::{sqldata, UserResponse};
 
 pub struct ZkState {
   pub state: Arc<RwLock<zknotes_server_lib::state::State>>,
@@ -39,9 +37,14 @@ pub fn login_data(state: State<ZkState>) -> Result<Option<LoginData>, String> {
   get_tauri_login_data(&conn, &mut sqldata::zknotes_callbacks()).map_err(|e| e.to_string())
 }
 
-pub fn get_tauri_uid(conn: &Connection) -> Result<Option<i64>, zkerr::Error> {
-  get_single_value(&conn, "last_login")
-    .and_then(|x| Ok(x.and_then(|s| serde_json::from_str::<i64>(s.as_str()).ok())))
+pub fn get_tauri_uid(conn: &Connection) -> Result<Option<UserId>, zkerr::Error> {
+  get_single_value(&conn, "last_login").and_then(|x| {
+    Ok(x.and_then(|s| {
+      serde_json::from_str::<i64>(s.as_str())
+        .ok()
+        .map(|x| UserId::Uid(x))
+    }))
+  })
 }
 
 pub fn get_tauri_login_data(
@@ -54,7 +57,7 @@ pub fn get_tauri_login_data(
   };
   let mut ld = dbfun::login_data(&conn, uid)?;
   let data = (callbacks.extra_login_data)(&conn, ld.userid)?;
-  ld.data = data;
+  ld.data = data.map(|x| x.to_string());
   Ok(Some(ld))
 }
 
@@ -259,7 +262,7 @@ pub fn pimsg(state: State<ZkState>, msg: PublicRequest) -> PublicTimedData {
     },
     (Err(e), Ok(t)) => PublicTimedData {
       utcmillis: t,
-      data: PublicReply::PrServerError(PublicError::PbeString(e.to_string())),
+      data: PublicReply::PbyServerError(PublicError::PbeString(e.to_string())),
       // PublicReplyMessage {
       //   what: PublicReplies::ServerError,
       //   content: Value::String(e.to_string()),
@@ -267,27 +270,21 @@ pub fn pimsg(state: State<ZkState>, msg: PublicRequest) -> PublicTimedData {
     },
     (_, Err(e)) => PublicTimedData {
       utcmillis: 0,
-      data: PublicReply::PrServerError(PublicError::PbeString(e.to_string())),
+      data: PublicReply::PbyServerError(PublicError::PbeString(e.to_string())),
     },
   }
 }
 
 #[tauri::command]
-pub fn uimsg(state: State<ZkState>, msg: UserRequestMessage) -> UserResponseMessage {
+pub fn uimsg(state: State<ZkState>, msg: UserRequest) -> UserResponse {
   println!("uimsg");
 
   match uimsg_err(state, msg) {
     Ok(ptd) => ptd,
-    Err(e) => UserResponseMessage {
-      what: UserResponse::ServerError,
-      data: Some(Value::String(e.to_string())),
-    },
+    Err(e) => UserResponse::UrpServerError(e.to_string()),
   }
 }
-pub fn uimsg_err(
-  state: State<ZkState>,
-  msg: UserRequestMessage,
-) -> Result<UserResponseMessage, zkerr::Error> {
+pub fn uimsg_err(state: State<ZkState>, msg: UserRequest) -> Result<UserResponse, zkerr::Error> {
   println!("uimsg");
 
   let conn = sqldata::connection_open(
@@ -313,25 +310,21 @@ pub fn uimsg_err(
     &conn, &mut ut, &ustate, msg,
   )) {
     Ok(sr) => {
-      match (&sr.what, sr.data.clone()) {
-        (UserResponse::LoggedIn, Some(d)) => {
-          let ld = serde_json::from_value::<LoginData>(d)?;
+      match &sr {
+        UserResponse::UrpLoggedIn(ld) => {
           set_single_value(&conn, "last_login", ld.userid.to_string().as_str())
             .map_err(|e| zkerr::annotate_string("error saving last login.".to_string(), e))?;
         }
-        (UserResponse::LoggedOut, _) => {
+        UserResponse::UrpLoggedOut => {
           set_single_value(&conn, "last_login", "").map_err(|e| {
             zkerr::annotate_string("error saving logged out status.".to_string(), e)
           })?;
         }
         _ => {}
-      }
+      };
       sr
     }
-    Err(e) => UserResponseMessage {
-      what: UserResponse::ServerError,
-      data: Some(Value::String(e.to_string())),
-    },
+    Err(e) => UserResponse::UrpServerError(e.to_string()),
   };
 
   Ok(sr)
