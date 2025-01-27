@@ -263,10 +263,6 @@ pub fn pimsg(state: State<ZkState>, msg: PublicRequest) -> PublicTimedData {
     (Err(e), Ok(t)) => PublicTimedData {
       utcmillis: t,
       data: PublicReply::PbyServerError(PublicError::PbeString(e.to_string())),
-      // PublicReplyMessage {
-      //   what: PublicReplies::ServerError,
-      //   content: Value::String(e.to_string()),
-      // },
     },
     (_, Err(e)) => PublicTimedData {
       utcmillis: 0,
