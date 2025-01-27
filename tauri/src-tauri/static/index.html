@@ -80,6 +80,10 @@
       invoke('login_data')
       .then((response) => {
           login = response;
+          if (login && login.data)
+          {
+            login.data = JSON.parse(login.data);
+          }
 
           app = Elm.Main.init({
             node: document.getElementById('elm'),
