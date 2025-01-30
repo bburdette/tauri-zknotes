@@ -10,7 +10,9 @@ use zknotes_server_lib::orgauth::dbfun;
 use zknotes_server_lib::orgauth::endpoints::{Callbacks, UuidTokener};
 use zknotes_server_lib::rusqlite::Connection;
 use zknotes_server_lib::sqldata::{get_single_value, set_single_value};
-use zknotes_server_lib::zkprotocol::private::{PrivateError, PrivateReply, PrivateRequest};
+use zknotes_server_lib::zkprotocol::private::{
+  PrivateClosureReply, PrivateClosureRequest, PrivateError, PrivateReply, PrivateRequest,
+};
 use zknotes_server_lib::zkprotocol::public::{PublicError, PublicReply, PublicRequest};
 use zknotes_server_lib::{sqldata, UserResponse};
 
@@ -64,7 +66,7 @@ pub fn get_tauri_login_data(
 #[derive(Serialize, Deserialize)]
 pub struct PrivateTimedData {
   utcmillis: u128,
-  data: PrivateReply,
+  data: PrivateClosureReply,
 }
 #[derive(Serialize, Deserialize)]
 pub struct PublicTimedData {
@@ -200,13 +202,16 @@ pub fn fileresp_helper(
 }
 
 #[tauri::command]
-pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateRequest) -> Result<PrivateTimedData, ()> {
+pub async fn zimsg(
+  state: State<'_, ZkState>,
+  msg: PrivateClosureRequest,
+) -> Result<PrivateTimedData, ()> {
   let stateclone = state.state.clone();
 
   let res = std::thread::spawn(move || {
     let rt = actix_rt::System::new();
     let state = stateclone.write().unwrap();
-    let zkres = tauri_zk_interface_loggedin(&state, &msg);
+    let zkres = tauri_zk_interface_loggedin(&state, &msg.request);
     match (
       rt.block_on(zkres),
       SystemTime::now()
@@ -215,15 +220,24 @@ pub async fn zimsg(state: State<'_, ZkState>, msg: PrivateRequest) -> Result<Pri
     ) {
       (Ok(sr), Ok(t)) => PrivateTimedData {
         utcmillis: t,
-        data: sr,
+        data: PrivateClosureReply {
+          closure_id: msg.closure_id,
+          reply: sr,
+        },
       },
       (Err(e), _) => PrivateTimedData {
         utcmillis: 0,
-        data: PrivateReply::PvyServerError(PrivateError::PveString(e.to_string())),
+        data: PrivateClosureReply {
+          closure_id: msg.closure_id,
+          reply: PrivateReply::PvyServerError(PrivateError::PveString(e.to_string())),
+        },
       },
       (_, Err(e)) => PrivateTimedData {
         utcmillis: 0,
-        data: PrivateReply::PvyServerError(PrivateError::PveString(e.to_string())),
+        data: PrivateClosureReply {
+          closure_id: msg.closure_id,
+          reply: PrivateReply::PvyServerError(PrivateError::PveString(e.to_string())),
+        },
       },
     }
   });
