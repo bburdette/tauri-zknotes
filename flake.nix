@@ -151,12 +151,13 @@
           ANDROID_SDK_ROOT = "${androidComposition.androidsdk}/libexec/android-sdk";
           ANDROID_NDK_ROOT = "${androidComposition.androidsdk}/libexec/android-sdk/ndk-bundle";
 
-          # apparently unnecessary:
-          # shellHook =
-          #   ''
-          #     # export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
-          #     export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
-          #   '';
+          # enables file open dialog; without it get an error:
+          # 'No GSettings schemas are installed on the system'
+          shellHook =
+            ''
+              # export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
+              export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
+            '';
 
           nativeBuildInputs = with pkgs; [
             androidComposition.androidsdk
