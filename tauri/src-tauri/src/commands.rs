@@ -1,8 +1,10 @@
+// use crate::data as D;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
+use tauri_plugin_dialog::DialogExt;
 use uuid::Uuid;
 use zknotes_server_lib::error as zkerr;
 use zknotes_server_lib::orgauth::data::{LoginData, UserId, UserRequest};
@@ -14,6 +16,7 @@ use zknotes_server_lib::zkprotocol::private::{
   PrivateClosureReply, PrivateClosureRequest, PrivateError, PrivateReply, PrivateRequest,
 };
 use zknotes_server_lib::zkprotocol::public::{PublicError, PublicReply, PublicRequest};
+use zknotes_server_lib::zkprotocol::tauri as zt;
 use zknotes_server_lib::{sqldata, UserResponse};
 
 pub struct ZkState {
@@ -199,6 +202,34 @@ pub fn fileresp_helper(
     }
     Err(e) => Err((usr, e.into())),
   }
+}
+
+#[tauri::command]
+pub async fn timsg(
+  app_handle: tauri::AppHandle,
+  // state: State<'_, ZkState>,
+  msg: zt::TauriRequest,
+) -> Result<zt::TauriReply, ()> {
+  // let stateclone = state.state.clone();
+
+  // let ah = app_handle.clone();
+
+  println!("here");
+
+  match msg {
+    zt::TauriRequest::TrqUploadFiles => {
+      // show open dialog
+      // let d = app_handle.dialog().file();
+      // d.pick_file(|f| println!("file: {:?} ", f));
+      let d = app_handle.dialog().file().blocking_pick_file();
+      println!("dee: {:?}", d);
+      // d.pick_file(|f| println!("file: {:?} ", f));
+    }
+  }
+
+  Ok(zt::TauriReply::TyUploadedFiles(zt::UploadedFiles {
+    paths: Vec::new(),
+  }))
 }
 
 #[tauri::command]

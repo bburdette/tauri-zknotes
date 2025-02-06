@@ -52,6 +52,13 @@
           console.log("response!");
           app.ports.receiveUITauriResponse.send(response) });
       }
+      function sendTIValueTauri(request) {
+        console.log("sendTIValueTauri", request);
+        invoke('timsg', { msg: request })
+        .then((response) => {
+          console.log("response!");
+          app.ports.receiveTITauriResponse.send(response) });
+      }
 
       function getTASelection(request) {
           var range = { text: "", offset: null };
@@ -104,6 +111,7 @@
           app.ports.getLocalVal.subscribe(getVal);
           app.ports.sendZIValueTauri.subscribe(sendZIValueTauri);
           app.ports.sendUIValueTauri.subscribe(sendUIValueTauri);
+          app.ports.sendTIValueTauri.subscribe(sendTIValueTauri);
           // app.ports.clearLocalStorage.subscribe(clearStorage);
 
           // selected text
