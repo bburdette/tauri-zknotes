@@ -1,5 +1,6 @@
 // use crate::data as D;
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tauri::{http, utils::mime_type};
@@ -16,7 +17,8 @@ use zknotes_server_lib::zkprotocol::private::{
   PrivateClosureReply, PrivateClosureRequest, PrivateError, PrivateReply, PrivateRequest,
 };
 use zknotes_server_lib::zkprotocol::public::{PublicError, PublicReply, PublicRequest};
-use zknotes_server_lib::zkprotocol::tauri as zt;
+use zknotes_server_lib::zkprotocol::tauri::{self as zt, TauriReply, UploadedFiles};
+use zknotes_server_lib::zkprotocol::upload::UploadReply;
 use zknotes_server_lib::{sqldata, UserResponse};
 
 pub struct ZkState {
@@ -207,11 +209,24 @@ pub fn fileresp_helper(
 #[tauri::command]
 pub async fn timsg(
   app_handle: tauri::AppHandle,
-  // state: State<'_, ZkState>,
+  state: State<'_, ZkState>,
   msg: zt::TauriRequest,
 ) -> Result<zt::TauriReply, ()> {
-  // let stateclone = state.state.clone();
+  println!("uimsg");
 
+  match timsg_err(app_handle, state, msg).await {
+    Ok(ptd) => Ok(ptd),
+    Err(e) => Ok(TauriReply::TyServerError(e.to_string())),
+  }
+}
+
+#[tauri::command]
+pub async fn timsg_err(
+  app_handle: tauri::AppHandle,
+  state: State<'_, ZkState>,
+  msg: zt::TauriRequest,
+) -> Result<zt::TauriReply, zkerr::Error> {
+  // let stateclone = state.state.clone();
   // let ah = app_handle.clone();
 
   println!("here");
@@ -219,17 +234,78 @@ pub async fn timsg(
   match msg {
     zt::TauriRequest::TrqUploadFiles => {
       // show open dialog
-      // let d = app_handle.dialog().file();
-      // d.pick_file(|f| println!("file: {:?} ", f));
-      let d = app_handle.dialog().file().blocking_pick_file();
-      println!("dee: {:?}", d);
-      // d.pick_file(|f| println!("file: {:?} ", f));
+      if let Some(dee) = app_handle.dialog().file().blocking_pick_files() {
+        println!("dee: {:?}", dee);
+        //  {
+        //   Ok(c) => c,
+        //   Err(e) => {
+        //     return Err((usr, e));
+        //   }
+        // };
+
+        let paths = dee
+          .iter()
+          .filter_map(|x| x.clone().into_path().ok())
+          .collect();
+
+        return make_file_notes(&state, &paths)
+          .await
+          .map(|fls| zt::TauriReply::TyUploadedFiles(fls));
+        // match make_file_notes(conn, st, dee) {
+        //   Ok(files) => return Ok(files),
+        //   Err(e) => (),
+        // }
+      }
     }
   }
 
   Ok(zt::TauriReply::TyUploadedFiles(zt::UploadedFiles {
-    paths: Vec::new(),
+    notes: Vec::new(),
   }))
+}
+
+async fn make_file_notes(
+  state: &State<'_, ZkState>,
+  // state: &zknotes_server_lib::state::State,
+  files: &Vec<PathBuf>,
+) -> Result<UploadedFiles, zkerr::Error> {
+  let state = state.state.read().unwrap();
+  // info!("make_file_notes");
+  let conn = sqldata::connection_open(state.config.orgauth_config.db.as_path())?;
+  // let userdata = session_user(&conn, session, &state)?;
+  let uid = get_tauri_uid(&conn)?.ok_or(zkerr::Error::NotLoggedIn)?;
+
+  // Save the files to our temp path.
+  // let tp = state.config.file_tmp_path.clone();
+  // let saved_files_res = save_files(&tp, payload).await;
+  // let saved_files = saved_files_res?;
+  // let saved_files = save_files(&tp, payload).await?;
+
+  let mut zklns = Vec::new();
+
+  for pb in files {
+    // compute hash.
+    // let fpath = Path::new(&fp);
+
+    let name = pb.as_path().file_name().and_then(|x| x.to_str());
+
+    if let Some(name) = name {
+      let (nid64, _noteid, _fid) = sqldata::make_file_note(
+        &conn,
+        &state.config.file_path,
+        uid,
+        &name.to_string(),
+        pb,
+        true,
+      )?;
+
+      // return zknoteedit.
+      let listnote = sqldata::read_zklistnote(&conn, &state.config.file_path, Some(uid), nid64)?;
+
+      zklns.push(listnote);
+    }
+  }
+  Ok(UploadedFiles { notes: zklns })
 }
 
 #[tauri::command]
@@ -325,6 +401,7 @@ pub fn uimsg(state: State<ZkState>, msg: UserRequest) -> UserResponse {
     Err(e) => UserResponse::UrpServerError(e.to_string()),
   }
 }
+
 pub fn uimsg_err(state: State<ZkState>, msg: UserRequest) -> Result<UserResponse, zkerr::Error> {
   println!("uimsg");
 
