@@ -1,3 +1,4 @@
+use log::info;
 // use crate::data as D;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -212,38 +213,36 @@ pub async fn timsg(
   state: State<'_, ZkState>,
   msg: zt::TauriRequest,
 ) -> Result<zt::TauriReply, ()> {
-  println!("uimsg");
+  info!("timsg");
 
   match timsg_err(app_handle, state, msg).await {
-    Ok(ptd) => Ok(ptd),
-    Err(e) => Ok(TauriReply::TyServerError(e.to_string())),
+    Ok(ptd) => {
+      info!("we're back1");
+      Ok(ptd)
+    }
+    Err(e) => {
+      info!("we're back2");
+      Ok(TauriReply::TyServerError(e.to_string()))
+    }
   }
 }
 
-#[tauri::command]
 pub async fn timsg_err(
   app_handle: tauri::AppHandle,
   state: State<'_, ZkState>,
   msg: zt::TauriRequest,
 ) -> Result<zt::TauriReply, zkerr::Error> {
-  // let stateclone = state.state.clone();
-  // let ah = app_handle.clone();
-
-  println!("here");
+  info!("timsg_err");
 
   match msg {
     zt::TauriRequest::TrqUploadFiles => {
-      // show open dialog
-      if let Some(dee) = app_handle.dialog().file().blocking_pick_files() {
-        println!("dee: {:?}", dee);
-        //  {
-        //   Ok(c) => c,
-        //   Err(e) => {
-        //     return Err((usr, e));
-        //   }
-        // };
+      info!("timsg_err 2");
 
-        let paths = dee
+      // show open dialog
+      if let Some(flz) = app_handle.dialog().file().blocking_pick_files() {
+        info!("dee: {:?}", flz);
+
+        let paths = flz
           .iter()
           .filter_map(|x| x.clone().into_path().ok())
           .collect();
@@ -251,13 +250,13 @@ pub async fn timsg_err(
         return make_file_notes(&state, &paths)
           .await
           .map(|fls| zt::TauriReply::TyUploadedFiles(fls));
-        // match make_file_notes(conn, st, dee) {
-        //   Ok(files) => return Ok(files),
-        //   Err(e) => (),
-        // }
+      } else {
+        info!("dee None");
       }
     }
   }
+
+  info!("timsg_err 3");
 
   Ok(zt::TauriReply::TyUploadedFiles(zt::UploadedFiles {
     notes: Vec::new(),
