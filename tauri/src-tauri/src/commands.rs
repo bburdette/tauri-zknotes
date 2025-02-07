@@ -1,7 +1,5 @@
-use log::info;
-// use crate::data as D;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tauri::{http, utils::mime_type};
@@ -19,7 +17,6 @@ use zknotes_server_lib::zkprotocol::private::{
 };
 use zknotes_server_lib::zkprotocol::public::{PublicError, PublicReply, PublicRequest};
 use zknotes_server_lib::zkprotocol::tauri::{self as zt, TauriReply, UploadedFiles};
-use zknotes_server_lib::zkprotocol::upload::UploadReply;
 use zknotes_server_lib::{sqldata, UserResponse};
 
 pub struct ZkState {
@@ -213,17 +210,9 @@ pub async fn timsg(
   state: State<'_, ZkState>,
   msg: zt::TauriRequest,
 ) -> Result<zt::TauriReply, ()> {
-  info!("timsg");
-
   match timsg_err(app_handle, state, msg).await {
-    Ok(ptd) => {
-      info!("we're back1");
-      Ok(ptd)
-    }
-    Err(e) => {
-      info!("we're back2");
-      Ok(TauriReply::TyServerError(e.to_string()))
-    }
+    Ok(ptd) => Ok(ptd),
+    Err(e) => Ok(TauriReply::TyServerError(e.to_string())),
   }
 }
 
@@ -232,16 +221,10 @@ pub async fn timsg_err(
   state: State<'_, ZkState>,
   msg: zt::TauriRequest,
 ) -> Result<zt::TauriReply, zkerr::Error> {
-  info!("timsg_err");
-
   match msg {
     zt::TauriRequest::TrqUploadFiles => {
-      info!("timsg_err 2");
-
       // show open dialog
       if let Some(flz) = app_handle.dialog().file().blocking_pick_files() {
-        info!("dee: {:?}", flz);
-
         let paths = flz
           .iter()
           .filter_map(|x| x.clone().into_path().ok())
@@ -251,12 +234,9 @@ pub async fn timsg_err(
           .await
           .map(|fls| zt::TauriReply::TyUploadedFiles(fls));
       } else {
-        info!("dee None");
       }
     }
   }
-
-  info!("timsg_err 3");
 
   Ok(zt::TauriReply::TyUploadedFiles(zt::UploadedFiles {
     notes: Vec::new(),
@@ -269,23 +249,12 @@ async fn make_file_notes(
   files: &Vec<PathBuf>,
 ) -> Result<UploadedFiles, zkerr::Error> {
   let state = state.state.read().unwrap();
-  // info!("make_file_notes");
   let conn = sqldata::connection_open(state.config.orgauth_config.db.as_path())?;
-  // let userdata = session_user(&conn, session, &state)?;
   let uid = get_tauri_uid(&conn)?.ok_or(zkerr::Error::NotLoggedIn)?;
-
-  // Save the files to our temp path.
-  // let tp = state.config.file_tmp_path.clone();
-  // let saved_files_res = save_files(&tp, payload).await;
-  // let saved_files = saved_files_res?;
-  // let saved_files = save_files(&tp, payload).await?;
 
   let mut zklns = Vec::new();
 
   for pb in files {
-    // compute hash.
-    // let fpath = Path::new(&fp);
-
     let name = pb.as_path().file_name().and_then(|x| x.to_str());
 
     if let Some(name) = name {

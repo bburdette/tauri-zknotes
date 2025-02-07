@@ -165,7 +165,6 @@
             # cargo
             # rustc
             cargo-watch
-            cargo-edit
             rustfmt
             rust-analyzer
             sqlite
