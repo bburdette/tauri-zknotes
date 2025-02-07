@@ -1,16 +1,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod commands;
+mod data;
+
+use commands::{greet, login_data, pimsg, timsg, uimsg, zimsg, ZkState};
 use girlboss::{Girlboss, Monitor};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::SystemTime;
+use tauri::Manager;
+use time;
 use zknotes_server_lib::err_main;
 use zknotes_server_lib::jobs::JobId;
 use zknotes_server_lib::state::State;
-mod commands;
-use commands::{greet, login_data, pimsg, uimsg, zimsg, ZkState};
-use tauri::Manager;
-use time;
 
 // THIS IS THE ONE FOR DESKTOP!
 
@@ -23,6 +25,7 @@ fn main() {
   };
 
   tauri::Builder::default()
+    .plugin(tauri_plugin_dialog::init())
     .manage(ZkState {
       state: Arc::new(RwLock::new(state)),
     })
@@ -86,7 +89,7 @@ fn main() {
     //   fileresp(app.state::<ZkState>(), request, responder);
     // })
     .invoke_handler(tauri::generate_handler![
-      greet, zimsg, pimsg, uimsg, login_data
+      greet, zimsg, pimsg, uimsg, login_data, timsg
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

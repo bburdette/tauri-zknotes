@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
+use tauri_plugin_dialog::DialogExt;
 use uuid::Uuid;
 use zknotes_server_lib::error as zkerr;
 use zknotes_server_lib::orgauth::data::{LoginData, UserId, UserRequest};
@@ -14,6 +16,7 @@ use zknotes_server_lib::zkprotocol::private::{
   PrivateClosureReply, PrivateClosureRequest, PrivateError, PrivateReply, PrivateRequest,
 };
 use zknotes_server_lib::zkprotocol::public::{PublicError, PublicReply, PublicRequest};
+use zknotes_server_lib::zkprotocol::tauri::{self as zt, TauriReply, UploadedFiles};
 use zknotes_server_lib::{sqldata, UserResponse};
 
 pub struct ZkState {
@@ -202,6 +205,78 @@ pub fn fileresp_helper(
 }
 
 #[tauri::command]
+pub async fn timsg(
+  app_handle: tauri::AppHandle,
+  state: State<'_, ZkState>,
+  msg: zt::TauriRequest,
+) -> Result<zt::TauriReply, ()> {
+  match timsg_err(app_handle, state, msg).await {
+    Ok(ptd) => Ok(ptd),
+    Err(e) => Ok(TauriReply::TyServerError(e.to_string())),
+  }
+}
+
+pub async fn timsg_err(
+  app_handle: tauri::AppHandle,
+  state: State<'_, ZkState>,
+  msg: zt::TauriRequest,
+) -> Result<zt::TauriReply, zkerr::Error> {
+  match msg {
+    zt::TauriRequest::TrqUploadFiles => {
+      // show open dialog
+      if let Some(flz) = app_handle.dialog().file().blocking_pick_files() {
+        let paths = flz
+          .iter()
+          .filter_map(|x| x.clone().into_path().ok())
+          .collect();
+
+        return make_file_notes(&state, &paths)
+          .await
+          .map(|fls| zt::TauriReply::TyUploadedFiles(fls));
+      } else {
+      }
+    }
+  }
+
+  Ok(zt::TauriReply::TyUploadedFiles(zt::UploadedFiles {
+    notes: Vec::new(),
+  }))
+}
+
+async fn make_file_notes(
+  state: &State<'_, ZkState>,
+  // state: &zknotes_server_lib::state::State,
+  files: &Vec<PathBuf>,
+) -> Result<UploadedFiles, zkerr::Error> {
+  let state = state.state.read().unwrap();
+  let conn = sqldata::connection_open(state.config.orgauth_config.db.as_path())?;
+  let uid = get_tauri_uid(&conn)?.ok_or(zkerr::Error::NotLoggedIn)?;
+
+  let mut zklns = Vec::new();
+
+  for pb in files {
+    let name = pb.as_path().file_name().and_then(|x| x.to_str());
+
+    if let Some(name) = name {
+      let (nid64, _noteid, _fid) = sqldata::make_file_note(
+        &conn,
+        &state.config.file_path,
+        uid,
+        &name.to_string(),
+        pb,
+        true,
+      )?;
+
+      // return zknoteedit.
+      let listnote = sqldata::read_zklistnote(&conn, &state.config.file_path, Some(uid), nid64)?;
+
+      zklns.push(listnote);
+    }
+  }
+  Ok(UploadedFiles { notes: zklns })
+}
+
+#[tauri::command]
 pub async fn zimsg(
   state: State<'_, ZkState>,
   msg: PrivateClosureRequest,
@@ -294,6 +369,7 @@ pub fn uimsg(state: State<ZkState>, msg: UserRequest) -> UserResponse {
     Err(e) => UserResponse::UrpServerError(e.to_string()),
   }
 }
+
 pub fn uimsg_err(state: State<ZkState>, msg: UserRequest) -> Result<UserResponse, zkerr::Error> {
   println!("uimsg");
 
