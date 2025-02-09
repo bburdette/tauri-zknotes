@@ -1,7 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
-mod data;
 
 use commands::{greet, login_data, pimsg, timsg, uimsg, zimsg, ZkState};
 use girlboss::{Girlboss, Monitor};
