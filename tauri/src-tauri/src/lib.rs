@@ -1,5 +1,5 @@
 mod commands;
-use commands::{greet, login_data, pimsg, timsg, uimsg, zimsg, ZkState};
+use commands::{get_platform, greet, login_data, pimsg, timsg, uimsg, zimsg, ZkState};
 use girlboss::{Girlboss, Monitor};
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -84,7 +84,13 @@ pub fn run() {
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
-      greet, zimsg, pimsg, uimsg, login_data, timsg
+      greet,
+      zimsg,
+      pimsg,
+      uimsg,
+      get_platform,
+      login_data,
+      timsg
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

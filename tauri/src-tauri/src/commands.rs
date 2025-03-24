@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
+use tauri::utils::platform::Target;
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
 use tauri_plugin_dialog::DialogExt;
@@ -40,6 +41,11 @@ pub fn login_data(state: State<ZkState>) -> Result<Option<LoginData>, String> {
   };
 
   get_tauri_login_data(&conn, &mut sqldata::zknotes_callbacks()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_platform() -> Result<Target, String> {
+  Ok(Target::current())
 }
 
 pub fn get_tauri_uid(conn: &Connection) -> Result<Option<UserId>, zkerr::Error> {
