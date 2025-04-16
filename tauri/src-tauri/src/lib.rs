@@ -7,6 +7,7 @@ use std::time::SystemTime;
 use tauri::Manager;
 use zknotes_server_lib::err_main;
 use zknotes_server_lib::jobs::JobId;
+use zknotes_server_lib::sqldata::Server;
 use zknotes_server_lib::state::State;
 
 // THIS IS THE ONE FOR ANDROID!
@@ -14,10 +15,15 @@ use zknotes_server_lib::state::State;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let gb: Girlboss<JobId, Monitor> = Girlboss::new();
+
   let state = State {
     config: zknotes_server_lib::defcon(),
     girlboss: { Arc::new(RwLock::new(gb)) },
     jobcounter: { RwLock::new(0 as i64) },
+    server: Server {
+      id: 0,
+      uuid: "".to_string(),
+    },
   };
 
   tauri::Builder::default()
@@ -56,10 +62,12 @@ pub fn run() {
           state.config.orgauth_config.db = dbpath;
           state.config.orgauth_config.open_registration = true;
 
-          zknotes_server_lib::sqldata::dbinit(
+          let server = zknotes_server_lib::sqldata::dbinit(
             state.config.orgauth_config.db.as_path(),
             state.config.orgauth_config.login_token_expiration_ms,
           )?;
+
+          state.server = server;
 
           // verify/create file directories.
           if state.config.createdirs {
