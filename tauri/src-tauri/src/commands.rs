@@ -266,6 +266,7 @@ async fn make_file_notes(
     if let Some(name) = name {
       let (nid64, _noteid, _fid) = sqldata::make_file_note(
         &conn,
+        &state.server,
         &state.config.file_path,
         uid,
         &name.to_string(),
