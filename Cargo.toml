@@ -1,0 +1,9 @@
+
+[workspace]
+
+members = [
+    "zknotes/zkprotocol",
+    "zknotes/server-lib",
+    "zknotes/orgauth/rustlib",
+    "tauri/src-tauri"
+]
