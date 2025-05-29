@@ -4,3 +4,4 @@ tauri/src-tauri/gen/
 zknotes.db
 target/
 .direnv/
+tauri/src-tauri/files/
