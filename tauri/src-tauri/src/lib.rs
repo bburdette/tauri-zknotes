@@ -15,7 +15,6 @@ use zknotes_server_lib::state::State;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let gb: Girlboss<JobId, Monitor> = Girlboss::new();
-
   let state = State {
     config: zknotes_server_lib::defcon(),
     girlboss: { Arc::new(RwLock::new(gb)) },
@@ -32,10 +31,8 @@ pub fn run() {
       state: Arc::new(RwLock::new(state)),
     })
     .setup(|app| {
-      // println!("dbpath: {:?}", dbpath);
       match app.state::<ZkState>().state.write() {
         Ok(mut state) => {
-          // let datapath = app.path().data_dir().unwrap();
           let datapath = app.path().document_dir().unwrap();
           let mut dbpath = datapath.clone();
           dbpath.push("zknotes.db");
@@ -59,10 +56,10 @@ pub fn run() {
           state.config.file_path = filepath;
           state.config.file_tmp_path = temppath;
           state.config.tauri_mode = true;
-
           state.config.orgauth_config.db = dbpath;
           state.config.orgauth_config.open_registration = true;
 
+          // load real server value
           let server = zknotes_server_lib::sqldata::dbinit(
             state.config.orgauth_config.db.as_path(),
             state.config.orgauth_config.login_token_expiration_ms,
