@@ -7,8 +7,8 @@ use std::time::SystemTime;
 use tauri::Manager;
 use zknotes_server_lib::err_main;
 use zknotes_server_lib::jobs::JobId;
-use zknotes_server_lib::sqldata::Server;
 use zknotes_server_lib::state::State;
+use zknotes_server_lib::zc::Server;
 
 // THIS IS THE ONE FOR ANDROID!
 
