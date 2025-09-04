@@ -10,10 +10,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # rust-overlay.url = "github:oxalica/rust-overlay";
+    elm-language-server = {
+      url = "github:WhileTruu/elm-language-server";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
   };
 
-  outputs = { self, nixpkgs, flake-utils, fenix  }:
+  outputs = { self, nixpkgs, flake-utils, fenix, elm-language-server  }:
     let
       # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
       # mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
@@ -39,12 +43,12 @@
 
         # fenix stuff for adding other compile targets
         mkToolchain = fenix.packages.${system}.combine;
-        toolchain = fenix.packages.${system}.stable;
+        toolchain = fenix.packages.${system}.latest;
         # toolchain = fenix.packages.${system}.default;
-        target1 = fenix.packages.${system}.targets."aarch64-linux-android".stable;
-        target2 = fenix.packages.${system}.targets."armv7-linux-androideabi".stable;
-        target3 = fenix.packages.${system}.targets."i686-linux-android".stable;
-        target4 = fenix.packages.${system}.targets."x86_64-linux-android".stable;
+        target1 = fenix.packages.${system}.targets."aarch64-linux-android".latest;
+        target2 = fenix.packages.${system}.targets."armv7-linux-androideabi".latest;
+        target3 = fenix.packages.${system}.targets."i686-linux-android".latest;
+        target4 = fenix.packages.${system}.targets."x86_64-linux-android".latest;
 
         mobileTargets = mkToolchain (with toolchain; [
           cargo
@@ -181,7 +185,8 @@
             elmPackages.elm-test
             elmPackages.elm-upgrade
             elmPackages.elm-xref
-            elmPackages.elm-language-server
+            # elmPackages.elm-language-server
+            elm-language-server.defaultPackage.${system}
             elmPackages.elm-verify-examples
             elmPackages.elmi-to-json
             elmPackages.elm-optimize-level-2
