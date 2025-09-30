@@ -267,12 +267,14 @@ async fn make_file_notes(
       let (nid64, _noteid, _fid) = sqldata::make_file_note(
         &conn,
         &state.server,
+        &None,
         &state.config.file_path,
         uid,
         &name.to_string(),
         pb,
         true,
-      )?;
+      )
+      .await?;
 
       // return zknoteedit.
       let listnote = sqldata::read_zklistnote(&conn, &state.config.file_path, Some(uid), nid64)?;
@@ -335,7 +337,7 @@ pub async fn tauri_zk_interface_loggedin(
   let uid =
     get_tauri_uid(&conn)?.ok_or(zkerr::Error::String("zimsg: not logged in".to_string()))?;
 
-  zknotes_server_lib::interfaces::zk_interface_loggedin(&state, &conn, uid, &msg).await
+  zknotes_server_lib::interfaces::zk_interface_loggedin(&state, &conn, None, uid, &msg).await
 }
 
 #[tauri::command]
