@@ -16,7 +16,7 @@ let
 in
 rustPlatform.buildRustPackage rec {
   pname = "tauri";
-  version = "2.0.1";
+  version = "2.8.4";
 
   src = fetchFromGitHub {
     owner = "tauri-apps";

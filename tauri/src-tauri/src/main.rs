@@ -11,8 +11,8 @@ use tauri::Manager;
 use time;
 use zknotes_server_lib::err_main;
 use zknotes_server_lib::jobs::JobId;
-use zknotes_server_lib::sqldata::Server;
 use zknotes_server_lib::state::State;
+use zknotes_server_lib::zc::Server;
 
 // THIS IS THE ONE FOR DESKTOP!
 
@@ -27,6 +27,7 @@ fn main() {
       id: 0,
       uuid: "".to_string(),
     },
+    lapin_conn: None,
   };
 
   tauri::Builder::default()

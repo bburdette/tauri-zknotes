@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
+use tauri::async_runtime::block_on;
 use tauri::utils::platform::Target;
 use tauri::{http, utils::mime_type};
 use tauri::{State, UriSchemeResponder};
@@ -236,7 +237,7 @@ pub async fn timsg_err(
           .filter_map(|x| x.clone().into_path().ok())
           .collect();
 
-        return make_file_notes(&state, &paths)
+        return make_file_notes(state, &paths)
           .await
           .map(|fls| zt::TauriReply::TyUploadedFiles(fls));
       } else {
@@ -250,13 +251,26 @@ pub async fn timsg_err(
 }
 
 async fn make_file_notes(
-  state: &State<'_, ZkState>,
+  state: State<'_, ZkState>,
+  // state: &State<'_, ZkState>,
   // state: &zknotes_server_lib::state::State,
   files: &Vec<PathBuf>,
 ) -> Result<UploadedFiles, zkerr::Error> {
-  let state = state.state.read().unwrap();
-  let conn = sqldata::connection_open(state.config.orgauth_config.db.as_path())?;
+  // let state = state.state.read().unwrap();
+  let conn = sqldata::connection_open(
+    state
+      .state
+      .read()
+      .unwrap()
+      .config
+      .orgauth_config
+      .db
+      .as_path(),
+  )?;
   let uid = get_tauri_uid(&conn)?.ok_or(zkerr::Error::NotLoggedIn)?;
+
+  let fp = state.state.read().unwrap().config.file_path.clone();
+  let server = state.state.read().unwrap().server.clone();
 
   let mut zklns = Vec::new();
 
@@ -264,18 +278,21 @@ async fn make_file_notes(
     let name = pb.as_path().file_name().and_then(|x| x.to_str());
 
     if let Some(name) = name {
-      let (nid64, _noteid, _fid) = sqldata::make_file_note(
+      // block_on instead of await because &conn is not Send
+      // (can't be used in multiple threads)
+      let (nid64, _noteid, _fid) = block_on(sqldata::make_file_note(
         &conn,
-        &state.server,
-        &state.config.file_path,
+        &server,
+        &None,
+        &fp,
         uid,
         &name.to_string(),
         pb,
         true,
-      )?;
+      ))?;
 
       // return zknoteedit.
-      let listnote = sqldata::read_zklistnote(&conn, &state.config.file_path, Some(uid), nid64)?;
+      let listnote = sqldata::read_zklistnote(&conn, &fp, Some(uid), nid64)?;
 
       zklns.push(listnote);
     }
@@ -335,7 +352,7 @@ pub async fn tauri_zk_interface_loggedin(
   let uid =
     get_tauri_uid(&conn)?.ok_or(zkerr::Error::String("zimsg: not logged in".to_string()))?;
 
-  zknotes_server_lib::interfaces::zk_interface_loggedin(&state, &conn, uid, &msg).await
+  zknotes_server_lib::interfaces::zk_interface_loggedin(&state, &conn, None, uid, &msg).await
 }
 
 #[tauri::command]
