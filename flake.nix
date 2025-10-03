@@ -133,15 +133,8 @@
         androidEnv = pkgs.androidenv.override { licenseAccepted = true; };
         androidComposition = androidEnv.composeAndroidPackages {
           includeNDK = true;
-          # platformToolsVersion = "35.0.1";
-          # buildToolsVersions = [ "35.0.0" ];
-          # platformVersions = [ "35" ];
-          # platformToolsVersion = "36.0.1";
-          # buildToolsVersions = [ "36.0.0" ];
-          # platformVersions = [ "36" ];
-          # platformToolsVersion = "34.0.5";
-          # buildToolsVersions = [ "34.0.0" ];
-          # platformVersions = [ "34" ];
+          # adding these until it works!
+          # hopefully can remove some of these at some point.
           platformToolsVersion = "36.0.1";
           buildToolsVersions = [ "36.0.0" "35.0.0" "34.0.0" ];
           platformVersions = [ "36" "34" ];
@@ -160,7 +153,7 @@
         devShell = pkgs.mkShell {
 
           NIX_LD = "${pkgs.stdenv.cc.libc}/lib/ld-linux-x86-64.so.2";
-          NIX_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.lbzip2 pkgs.bzip2 pkgs.bzip2_1_1 ]; 
+          # NIX_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.lbzip2 pkgs.bzip2 pkgs.bzip2_1_1 ]; 
           ANDROID_HOME = "${androidComposition.androidsdk}/libexec/android-sdk";
           NDK_HOME = "${androidComposition.androidsdk}/libexec/android-sdk/ndk/${builtins.head (pkgs.lib.lists.reverseList (builtins.split "-" "${androidComposition.ndk-bundle}"))}";
           ANDROID_SDK_ROOT = "${androidComposition.androidsdk}/libexec/android-sdk";

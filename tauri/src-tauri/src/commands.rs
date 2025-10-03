@@ -252,11 +252,8 @@ pub async fn timsg_err(
 
 async fn make_file_notes(
   state: State<'_, ZkState>,
-  // state: &State<'_, ZkState>,
-  // state: &zknotes_server_lib::state::State,
   files: &Vec<PathBuf>,
 ) -> Result<UploadedFiles, zkerr::Error> {
-  // let state = state.state.read().unwrap();
   let conn = sqldata::connection_open(
     state
       .state
