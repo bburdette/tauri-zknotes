@@ -2,7 +2,8 @@
   description = "zknotes, a web based zettelkasten";
 
   inputs = {
-    nixpkgs = { url = "github:nixos/nixpkgs/nixos-24.05"; };
+    nixpkgs = { url = "github:nixos/nixpkgs/nixos-25.05"; };
+    unstable = { url = "github:nixos/nixpkgs/nixos-unstable"; };
     flake-utils.url = "github:numtide/flake-utils";
     # naersk.url = "github:nmattia/naersk";
     fenix = {
@@ -13,7 +14,7 @@
 
   };
 
-  outputs = { self, nixpkgs, flake-utils, fenix  }:
+  outputs = { self, nixpkgs, flake-utils, fenix, unstable  }:
     let
       # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
       # mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
@@ -65,6 +66,10 @@
           # overlays = [ fenix.overlays.default ];
           # rustPlatform = nixpkgs.makeRustPlatform { cargo = toolchain; rustc = toolchain; };
         };
+
+        upkgs = import unstable { 
+          system = "${system}";
+          };
 
         # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
         # my-tauri = mytauri { inherit pkgs; };
@@ -128,9 +133,18 @@
         androidEnv = pkgs.androidenv.override { licenseAccepted = true; };
         androidComposition = androidEnv.composeAndroidPackages {
           includeNDK = true;
-          platformToolsVersion = "34.0.5";
-          buildToolsVersions = [ "34.0.0" ];
-          platformVersions = [ "34" ];
+          # platformToolsVersion = "35.0.1";
+          # buildToolsVersions = [ "35.0.0" ];
+          # platformVersions = [ "35" ];
+          # platformToolsVersion = "36.0.1";
+          # buildToolsVersions = [ "36.0.0" ];
+          # platformVersions = [ "36" ];
+          # platformToolsVersion = "34.0.5";
+          # buildToolsVersions = [ "34.0.0" ];
+          # platformVersions = [ "34" ];
+          platformToolsVersion = "36.0.1";
+          buildToolsVersions = [ "36.0.0" "35.0.0" "34.0.0" ];
+          platformVersions = [ "36" "34" ];
           extraLicenses = [
             "android-googletv-license"
             "android-sdk-arm-dbt-license"
@@ -146,6 +160,7 @@
         devShell = pkgs.mkShell {
 
           NIX_LD = "${pkgs.stdenv.cc.libc}/lib/ld-linux-x86-64.so.2";
+          NIX_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.lbzip2 pkgs.bzip2 pkgs.bzip2_1_1 ]; 
           ANDROID_HOME = "${androidComposition.androidsdk}/libexec/android-sdk";
           NDK_HOME = "${androidComposition.androidsdk}/libexec/android-sdk/ndk/${builtins.head (pkgs.lib.lists.reverseList (builtins.split "-" "${androidComposition.ndk-bundle}"))}";
           ANDROID_SDK_ROOT = "${androidComposition.androidsdk}/libexec/android-sdk";
@@ -160,6 +175,7 @@
             '';
 
           nativeBuildInputs = with pkgs; [
+            upkgs.cargo-tauri
             androidComposition.androidsdk
             androidComposition.ndk-bundle
             # cargo
@@ -182,7 +198,7 @@
             elmPackages.elm-upgrade
             elmPackages.elm-xref
             elmPackages.elm-language-server
-            elmPackages.elm-verify-examples
+            # elmPackages.elm-verify-examples
             elmPackages.elmi-to-json
             elmPackages.elm-optimize-level-2
             # extra stuff for tauri
