@@ -3,9 +3,7 @@
 
   inputs = {
     nixpkgs = { url = "github:nixos/nixpkgs/nixos-25.05"; };
-    unstable = { url = "github:nixos/nixpkgs/nixos-unstable"; };
     flake-utils.url = "github:numtide/flake-utils";
-    # naersk.url = "github:nmattia/naersk";
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,7 +12,7 @@
 
   };
 
-  outputs = { self, nixpkgs, flake-utils, fenix, unstable  }:
+  outputs = { self, nixpkgs, flake-utils, fenix   }:
     let
       # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
       # mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
@@ -24,19 +22,6 @@
       system:
       let
         pname = "zknotes";
-        # naersk-lib = naersk.lib."${system}";
-        # elm-stuff = makeElmPkg { inherit pkgs; };
-        # rust-stuff = naersk-lib.buildPackage {
-        #     pname = pname;
-        #     root = ./.;
-        #     buildInputs = with pkgs; [
-        #       cargo
-        #       rustc
-        #       sqlite
-        #       pkgconfig
-        #       openssl.dev
-        #       ];
-        #   };
 
         # fenix stuff for adding other compile targets
         mkToolchain = fenix.packages.${system}.combine;
@@ -67,12 +52,12 @@
           # rustPlatform = nixpkgs.makeRustPlatform { cargo = toolchain; rustc = toolchain; };
         };
 
-        upkgs = import unstable { 
-          system = "${system}";
-          };
+        # upkgs = import unstable { 
+        #   system = "${system}";
+        #   };
 
-        # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
-        # my-tauri = mytauri { inherit pkgs; };
+        ctpkg = { pkgs }: pkgs.callPackage ./tauri/cargo-tauri.nix { };
+        cargo-tauri = ctpkg { inherit pkgs; };
         # my-tauri = pkgs.callPackage ./tauri/my-tauri.nix {
         #   rustPlatform = pkgs.makeRustPlatform { cargo = toolchain; rustc = toolchain; };
         # };
@@ -168,7 +153,8 @@
             '';
 
           nativeBuildInputs = with pkgs; [
-            upkgs.cargo-tauri
+            # upkgs.cargo-tauri
+            cargo-tauri
             androidComposition.androidsdk
             androidComposition.ndk-bundle
             # cargo
