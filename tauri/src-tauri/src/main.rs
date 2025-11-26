@@ -27,7 +27,7 @@ fn main() {
       id: 0,
       uuid: "".to_string(),
     },
-    lapin_conn: None,
+    lapin_conn: RwLock::new(None),
   };
 
   tauri::Builder::default()

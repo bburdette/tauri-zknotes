@@ -19,7 +19,7 @@ pub fn run() {
     config: zknotes_server_lib::defcon(),
     girlboss: { Arc::new(RwLock::new(gb)) },
     jobcounter: { RwLock::new(0 as i64) },
-    lapin_conn: None,
+    lapin_conn: RwLock::new(None),
     // server placeholder value
     server: Server {
       id: 0,
