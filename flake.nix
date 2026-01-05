@@ -75,13 +75,12 @@
 
         libraries = with pkgs;[
           gcc13
-          webkitgtk
+          webkitgtk_4_1
           gtk3
           cairo
           gdk-pixbuf
           glib
-          # dbus
-          openssl_3
+          libsoup_3
           librsvg
         ];
 
@@ -148,7 +147,7 @@
           # 'No GSettings schemas are installed on the system'
           shellHook =
             ''
-              # export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
+              export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
               export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
             '';
 
