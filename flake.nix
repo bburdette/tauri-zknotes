@@ -35,6 +35,7 @@
         mobileTargets = mkToolchain (with toolchain; [
           cargo
           rustc
+          rust-analyzer
           target1.rust-std
           target2.rust-std
           target3.rust-std
@@ -160,7 +161,7 @@
             # rustc
             cargo-watch
             rustfmt
-            rust-analyzer
+            # rust-analyzer
             sqlite
             openssl.dev
             # aarch64-linux-android-pkgs.sqlite
