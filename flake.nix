@@ -36,6 +36,7 @@
           cargo
           rustc
           rust-analyzer
+          rust-src
           target1.rust-std
           target2.rust-std
           target3.rust-std
@@ -146,10 +147,12 @@
 
           # enables file open dialog; without it get an error:
           # 'No GSettings schemas are installed on the system'
+          # Need RUST_SRC_PATH so that rust-analyzer sees rust stdlib
           shellHook =
             ''
               export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath libraries}:$LD_LIBRARY_PATH
               export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
+              export RUST_SRC_PATH=${toolchain.rust-src}/lib/rustlib/src/rust/library
             '';
 
           nativeBuildInputs = with pkgs; [
