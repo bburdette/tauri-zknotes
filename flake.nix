@@ -4,15 +4,20 @@
   inputs = {
     nixpkgs = { url = "github:nixos/nixpkgs/nixos-25.05"; };
     flake-utils.url = "github:numtide/flake-utils";
+    elm-language-server = {
+      url = "github:WhileTruu/elm-language-server";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # rust-overlay.url = "github:oxalica/rust-overlay";
+      # };
+      # rust-overlay.url = "github:oxalica/rust-overlay";
 
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, fenix   }:
+  outputs = { self, nixpkgs, flake-utils, fenix, elm-language-server }:
     let
       # mytauri = { pkgs }: pkgs.callPackage ./tauri/my-tauri.nix { };
       # mytaurimobile = { pkgs }: pkgs.callPackage ./tauri/my-tauri-mobile.nix { };
@@ -31,6 +36,8 @@
         target2 = fenix.packages.${system}.targets."armv7-linux-androideabi".stable;
         target3 = fenix.packages.${system}.targets."i686-linux-android".stable;
         target4 = fenix.packages.${system}.targets."x86_64-linux-android".stable;
+
+        els = elm-language-server.packages.${system}.elm-language-server;
 
         mobileTargets = mkToolchain (with toolchain; [
           cargo
@@ -179,7 +186,9 @@
             elmPackages.elm-test
             elmPackages.elm-upgrade
             elmPackages.elm-xref
-            elmPackages.elm-language-server
+            # elmPackages.elm-language-server
+            els
+            # elm-language-server.nixpkgs.elm-language-server
             # elmPackages.elm-verify-examples
             elmPackages.elmi-to-json
             elmPackages.elm-optimize-level-2
