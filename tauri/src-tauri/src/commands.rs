@@ -349,7 +349,7 @@ pub async fn tauri_zk_interface_loggedin(
   let uid =
     get_tauri_uid(&conn)?.ok_or(zkerr::Error::String("zimsg: not logged in".to_string()))?;
 
-  zknotes_server_lib::interfaces::zk_interface_loggedin(&state, &conn, None, uid, &msg).await
+  zknotes_server_lib::interfaces::zk_interface_loggedin(&state, &conn, &None, uid, &msg).await
 }
 
 #[tauri::command]
