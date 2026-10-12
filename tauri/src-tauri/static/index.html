@@ -116,7 +116,9 @@
                        login : login,
                        adminsettings : adminsettings,
                        tauri : true,
-                       mobile : mobile}});
+                       mobile : mobile,
+                       websockets : false
+                       }});
 
             // local storage
             app.ports.storeLocalVal.subscribe(storeVal);
