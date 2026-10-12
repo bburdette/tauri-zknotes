@@ -8,11 +8,11 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1777804247,
-        "narHash": "sha256-qS43YwZqxB8SN4XU5saBnEctbiBACiB7fLYavm63IMg=",
+        "lastModified": 1778394448,
+        "narHash": "sha256-4zrFen7bzjlAr1f2sfQvcJCRjRe7WFKOuyh7yJn2CB4=",
         "owner": "WhileTruu",
         "repo": "elm-language-server",
-        "rev": "911b2c823c85da76ddc87db87e3dcef0aed2d41a",
+        "rev": "b077b92bfafd866698c041a5fb39d26fcacf3acf",
         "type": "github"
       },
       "original": {
